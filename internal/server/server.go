@@ -37,7 +37,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			fmt.Println("invalid parse body")
 		}
-		url = string(url_bytes)
+		url = strings.TrimSuffix(string(url_bytes), "\n")
 	} else {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		fmt.Println("invalid ContentType")
@@ -50,6 +50,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("Add url", url)
 	key := s.service.CreateRedirect(url)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(key))
