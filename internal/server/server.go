@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"go-shortener/internal/services"
+	"github.com/zueve/go-shortener/internal/services"
 	"net/http"
 	"strings"
 )

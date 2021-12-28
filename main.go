@@ -1,10 +1,10 @@
 package main
 
 import (
-	"go-shortener/cmd/shortener"
-	"go-shortener/internal/server"
-	"go-shortener/internal/services"
-	"go-shortener/internal/storage"
+	"github.com/zueve/go-shortener/cmd/shortener"
+	"github.com/zueve/go-shortener/internal/server"
+	"github.com/zueve/go-shortener/internal/services"
+	"github.com/zueve/go-shortener/internal/storage"
 )
 
 func main() {

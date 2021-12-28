@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"go-shortener/internal/server"
+	"github.com/zueve/go-shortener/internal/server"
 )
 
 func Run(server server.Server) {
