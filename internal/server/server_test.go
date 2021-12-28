@@ -73,7 +73,7 @@ func TestServer_createRedirect(t *testing.T) {
 			request := httptest.NewRequest(tt.method, "/", bytes.NewBufferString(data.Encode()))
 			request.Header.Set("Content-Type", tt.contentType)
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(s.routeRedirect)
+			h := http.HandlerFunc(s.createRedirect)
 
 			h.ServeHTTP(w, request)
 			res := w.Result()
@@ -113,7 +113,7 @@ func TestServer_redirect(t *testing.T) {
 			s := &Server{service: service_}
 			request := httptest.NewRequest(tt.method, tt.url, nil)
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(s.routeRedirect)
+			h := http.HandlerFunc(s.redirect)
 
 			h.ServeHTTP(w, request)
 			res := w.Result()

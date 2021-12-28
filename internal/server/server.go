@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/zueve/go-shortener/internal/services"
 	"net/http"
 	"strings"
@@ -11,13 +12,15 @@ type Server struct {
 	service services.Service
 }
 
-func (s *Server) Run() {
-	http.HandleFunc("/", s.routeRedirect)
-	http.ListenAndServe(":8080", nil)
-}
-
 func New(service services.Service) Server {
 	return Server{service: service}
+}
+
+func (s *Server) Run() {
+	r := chi.NewRouter()
+	r.Post("/", s.createRedirect)
+	r.Get("/{key}", s.redirect)
+	http.ListenAndServe(":8080", r)
 }
 
 func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
@@ -49,16 +52,4 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-}
-
-func (s *Server) routeRedirect(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		s.redirect(w, r)
-	} else if r.Method == http.MethodPost {
-		s.createRedirect(w, r)
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Println("invalid method")
-	}
-
 }
