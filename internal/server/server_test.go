@@ -101,6 +101,12 @@ func TestServer_redirect(t *testing.T) {
 			code:   307,
 			url:    fmt.Sprintf("/%s", valid_key),
 		},
+		{
+			name:   "negative test2",
+			method: http.MethodGet,
+			code:   400,
+			url:    "/invalid",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

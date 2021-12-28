@@ -22,6 +22,7 @@ func New(service services.Service) Server {
 
 func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
+	w.Header().Set("content-type", "text/plain")
 	if headerContentType != "application/x-www-form-urlencoded" {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		fmt.Println("invalid ContentType")
@@ -53,7 +54,11 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 func (s *Server) routeRedirect(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		s.redirect(w, r)
-	} else {
+	} else if r.Method == http.MethodPost {
 		s.createRedirect(w, r)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println("invalid method")
 	}
+
 }
