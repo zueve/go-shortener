@@ -47,7 +47,7 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("invalid key")
 		return
 	}
-	http.Redirect(w, r, url, http.StatusMovedPermanently)
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
 func (s *Server) routeRedirect(w http.ResponseWriter, r *http.Request) {
