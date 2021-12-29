@@ -88,24 +88,28 @@ func TestServer_createRedirect(t *testing.T) {
 func TestServer_redirect(t *testing.T) {
 	var storage_ = storage.New()
 	var service_ = services.New(&storage_)
-	var valid_key = service_.CreateRedirect("https://example.com")
+	var location = "https://example.com"
+	var valid_key = service_.CreateRedirect(location)
 	tests := []struct {
-		name   string
-		method string
-		code   int
-		url    string
+		name     string
+		method   string
+		code     int
+		url      string
+		location string
 	}{
 		{
-			name:   "positive test1",
-			method: http.MethodGet,
-			code:   307,
-			url:    fmt.Sprintf("/%s", valid_key),
+			name:     "positive test1",
+			method:   http.MethodGet,
+			code:     307,
+			url:      fmt.Sprintf("/%s", valid_key),
+			location: location,
 		},
 		{
-			name:   "negative test2",
-			method: http.MethodGet,
-			code:   400,
-			url:    "/invalid",
+			name:     "negative test2",
+			method:   http.MethodGet,
+			code:     400,
+			url:      "/invalid",
+			location: "",
 		},
 	}
 	for _, tt := range tests {
@@ -120,7 +124,14 @@ func TestServer_redirect(t *testing.T) {
 			if res.StatusCode != tt.code {
 				t.Errorf("Expected status code %d, got %d", tt.code, w.Code)
 			}
-			defer res.Body.Close()
+			// defer res.Body.Close()
+			if tt.code == 307 {
+				loc := res.Header.Get("location")
+				if loc != tt.location {
+					t.Errorf("Expected location %s, got %s", tt.location, loc)
+				}
+			}
+
 		})
 	}
 }

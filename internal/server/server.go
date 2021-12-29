@@ -10,18 +10,21 @@ import (
 )
 
 type Server struct {
-	service services.Service
+	service     services.Service
+	service_url string
+	port        int
 }
 
-func New(service services.Service) Server {
-	return Server{service: service}
+func New(service services.Service, service_url string, port int) Server {
+	return Server{service: service, service_url: service_url, port: port}
 }
 
 func (s *Server) Run() {
 	r := chi.NewRouter()
 	r.Post("/", s.createRedirect)
 	r.Get("/{keyID}", s.redirect)
-	http.ListenAndServe(":8080", r)
+	loc := fmt.Sprintf(":%d", s.port)
+	http.ListenAndServe(loc, r)
 }
 
 func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
@@ -52,8 +55,9 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Add url", url)
 	key := s.service.CreateRedirect(url)
+	result_url := fmt.Sprintf("%s/%s", s.service_url, key)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(key))
+	w.Write([]byte(result_url))
 }
 
 func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +67,7 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	url, err := s.service.GetUrlByKey(key)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Println("invalid key")
+		fmt.Println("invalid key", key)
 		return
 	}
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
