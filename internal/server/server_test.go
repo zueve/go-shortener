@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -90,6 +91,10 @@ func TestServer_redirect(t *testing.T) {
 	var service_ = services.New(&storage_)
 	var location = "https://example.com"
 	var valid_key = service_.CreateRedirect(location)
+	client := http.Client{}
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 	tests := []struct {
 		name     string
 		method   string
@@ -115,16 +120,20 @@ func TestServer_redirect(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{service: service_}
-			request := httptest.NewRequest(tt.method, tt.url, nil)
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(s.redirect)
 
-			h.ServeHTTP(w, request)
-			res := w.Result()
-			if res.StatusCode != tt.code {
-				t.Errorf("Expected status code %d, got %d", tt.code, w.Code)
+			r := chi.NewRouter()
+			r.Get("/{keyID}", s.redirect)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+			url := fmt.Sprintf("%s%s", ts.URL, tt.url)
+			fmt.Println("Url - ", url)
+			res, err := client.Get(url)
+			if err != nil {
+				t.Errorf("Problem with server")
 			}
-			// defer res.Body.Close()
+			if res.StatusCode != tt.code {
+				t.Errorf("Expected status code %d, got %d", tt.code, res.StatusCode)
+			}
 			if tt.code == 307 {
 				loc := res.Header.Get("location")
 				if loc != tt.location {

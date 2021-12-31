@@ -61,9 +61,8 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
-	// TODO don't work
-	// key := chi.URLParam(r, "keyID")
-	key := strings.TrimPrefix(r.URL.Path, "/")
+	key := chi.URLParam(r, "keyID")
+	fmt.Println("Call redirect for", key)
 	url, err := s.service.GetUrlByKey(key)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
