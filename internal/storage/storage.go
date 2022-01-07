@@ -23,8 +23,8 @@ func (c *Storage) Add(url string) string {
 
 func (c *Storage) Get(key string) (string, error) {
 	url, ok := c.links[key]
-	if ok == false {
-		return "", errors.New("Key not exist")
+	if !ok {
+		return "", errors.New("key not exist")
 	}
 	return url, nil
 }

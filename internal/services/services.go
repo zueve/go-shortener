@@ -13,7 +13,7 @@ func (s *Service) CreateRedirect(key string) string {
 	return s.storage.Add(key)
 }
 
-func (s *Service) GetUrlByKey(key string) (string, error) {
+func (s *Service) GetURLByKey(key string) (string, error) {
 	return s.storage.Get(key)
 }
 

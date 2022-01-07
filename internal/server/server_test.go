@@ -3,73 +3,74 @@ package server
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/zueve/go-shortener/internal/services"
 	"github.com/zueve/go-shortener/internal/storage"
 )
 
 func TestServer_createRedirect(t *testing.T) {
-	var storage_ = storage.New()
-	var service_ = services.New(&storage_)
+	var storageTest = storage.New()
+	var serviceTest = services.New(&storageTest)
 	tests := []struct {
 		name        string
 		method      string
 		contentType string
 		code        int
-		url_key     string
-		url_val     string
+		urlKey      string
+		urlVal      string
 	}{
 		{
 			name:        "positive test1",
 			method:      http.MethodPost,
 			contentType: "application/x-www-form-urlencoded",
 			code:        201,
-			url_key:     "url",
-			url_val:     "http://example.com/...",
+			urlKey:      "url",
+			urlVal:      "http://example.com/...",
 		},
 		{
 			name:        "negative data",
 			method:      http.MethodPost,
 			contentType: "application/x-www-form-urlencoded",
 			code:        400,
-			url_key:     "url0",
-			url_val:     "http://example.com/...",
+			urlKey:      "url0",
+			urlVal:      "http://example.com/...",
 		},
 		{
 			name:        "negative empty url",
 			method:      http.MethodPost,
 			contentType: "application/x-www-form-urlencoded",
 			code:        400,
-			url_key:     "url0",
-			url_val:     "",
+			urlKey:      "url0",
+			urlVal:      "",
 		},
 		{
 			name:        "negative invalid method",
 			method:      http.MethodGet,
 			contentType: "application/x-www-form-urlencoded",
 			code:        400,
-			url_key:     "url",
-			url_val:     "http://example.com/...",
+			urlKey:      "url",
+			urlVal:      "http://example.com/...",
 		},
 		{
 			name:        "negative invalid content type",
 			method:      http.MethodPost,
 			contentType: "application/json",
 			code:        415,
-			url_key:     "url",
-			url_val:     "http://example.com/...",
+			urlKey:      "url",
+			urlVal:      "http://example.com/...",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{service: service_}
+			s := &Server{service: serviceTest}
 			data := url.Values{}
-			data.Set(tt.url_key, tt.url_val)
+			data.Set(tt.urlKey, tt.urlVal)
 
 			request := httptest.NewRequest(tt.method, "/", bytes.NewBufferString(data.Encode()))
 			request.Header.Set("Content-Type", tt.contentType)
@@ -87,10 +88,10 @@ func TestServer_createRedirect(t *testing.T) {
 }
 
 func TestServer_redirect(t *testing.T) {
-	var storage_ = storage.New()
-	var service_ = services.New(&storage_)
+	var storageTest = storage.New()
+	var serviceTest = services.New(&storageTest)
 	var location = "https://example.com"
-	var valid_key = service_.CreateRedirect(location)
+	var validKey = serviceTest.CreateRedirect(location)
 	client := http.Client{}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -106,7 +107,7 @@ func TestServer_redirect(t *testing.T) {
 			name:     "positive test1",
 			method:   http.MethodGet,
 			code:     307,
-			url:      fmt.Sprintf("/%s", valid_key),
+			url:      fmt.Sprintf("/%s", validKey),
 			location: location,
 		},
 		{
@@ -119,7 +120,7 @@ func TestServer_redirect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{service: service_}
+			s := &Server{service: serviceTest}
 
 			r := chi.NewRouter()
 			r.Get("/{keyID}", s.redirect)
@@ -131,6 +132,7 @@ func TestServer_redirect(t *testing.T) {
 			if err != nil {
 				t.Errorf("Problem with server")
 			}
+			defer res.Body.Close()
 			if res.StatusCode != tt.code {
 				t.Errorf("Expected status code %d, got %d", tt.code, res.StatusCode)
 			}

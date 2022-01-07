@@ -2,21 +2,22 @@ package server
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/zueve/go-shortener/internal/services"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/zueve/go-shortener/internal/services"
 )
 
 type Server struct {
-	service     services.Service
-	service_url string
-	port        int
+	service    services.Service
+	serviceURL string
+	port       int
 }
 
-func New(service services.Service, service_url string, port int) Server {
-	return Server{service: service, service_url: service_url, port: port}
+func New(service services.Service, serviceURL string, port int) Server {
+	return Server{service: service, serviceURL: serviceURL, port: port}
 }
 
 func (s *Server) Run() {
@@ -35,12 +36,12 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		url = r.FormValue("url")
 	} else if headerContentType == "text/plain; charset=utf-8" {
-		url_bytes, err := io.ReadAll(r.Body)
+		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			fmt.Println("invalid parse body")
 		}
-		url = strings.TrimSuffix(string(url_bytes), "\n")
+		url = strings.TrimSuffix(string(urlBytes), "\n")
 	} else {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		fmt.Println("invalid ContentType")
@@ -55,15 +56,15 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Add url", url)
 	key := s.service.CreateRedirect(url)
-	result_url := fmt.Sprintf("%s/%s", s.service_url, key)
+	resultURL := fmt.Sprintf("%s/%s", s.serviceURL, key)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(result_url))
+	w.Write([]byte(resultURL))
 }
 
 func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "keyID")
 	fmt.Println("Call redirect for", key)
-	url, err := s.service.GetUrlByKey(key)
+	url, err := s.service.GetURLByKey(key)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Println("invalid key", key)
