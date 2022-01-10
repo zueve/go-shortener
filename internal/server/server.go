@@ -39,7 +39,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	case "text/plain; charset=utf-8":
 		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			w.WriteHeader(http.StatusUnsupportedMediaType)
+			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Println("invalid parse body")
 		}
 		url = strings.TrimSuffix(string(urlBytes), "\n")

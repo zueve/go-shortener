@@ -7,7 +7,7 @@ import (
 )
 
 type Storage struct {
-	mtx     sync.Mutex
+	sync.RWMutex
 	links   map[string]string
 	counter int
 }
@@ -20,8 +20,9 @@ func New() *Storage {
 }
 
 func (c *Storage) Add(url string) string {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
+	c.Lock()
+	defer c.Unlock()
+
 	c.counter++
 	key := strconv.Itoa(c.counter)
 	c.links[key] = url
@@ -30,6 +31,9 @@ func (c *Storage) Add(url string) string {
 }
 
 func (c *Storage) Get(key string) (string, error) {
+	c.RLock()
+	defer c.RUnlock()
+
 	url, ok := c.links[key]
 	if !ok {
 		return "", errors.New("key not exist")
