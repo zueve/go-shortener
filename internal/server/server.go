@@ -31,18 +31,19 @@ func (s *Server) Run() {
 func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
 	w.Header().Set("content-type", "text/plain")
-	var url = ""
-	if headerContentType == "application/x-www-form-urlencoded" {
+	var url string
+	switch headerContentType {
+	case "application/x-www-form-urlencoded":
 		r.ParseForm()
 		url = r.FormValue("url")
-	} else if headerContentType == "text/plain; charset=utf-8" {
+	case "text/plain; charset=utf-8":
 		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			fmt.Println("invalid parse body")
 		}
 		url = strings.TrimSuffix(string(urlBytes), "\n")
-	} else {
+	default:
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		fmt.Println("invalid ContentType")
 		return
