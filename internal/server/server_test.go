@@ -10,9 +10,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/zueve/go-shortener/internal/config"
 	"github.com/zueve/go-shortener/internal/services"
 	"github.com/zueve/go-shortener/internal/storage"
 )
+
+func getCtx() *config.Context {
+	return config.NewContext(
+		config.WithServiceURL("http://localhost:8080"),
+		config.WithPort(8080),
+	)
+}
 
 func TestServer_createRedirect(t *testing.T) {
 	var storageTest = storage.New()
@@ -68,7 +76,7 @@ func TestServer_createRedirect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{service: serviceTest}
+			s := New(getCtx(), serviceTest)
 			data := url.Values{}
 			data.Set(tt.urlKey, tt.urlVal)
 
@@ -120,7 +128,7 @@ func TestServer_redirect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{service: serviceTest}
+			s := New(getCtx(), serviceTest)
 
 			r := chi.NewRouter()
 			r.Get("/{keyID}", s.redirect)

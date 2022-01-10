@@ -7,24 +7,24 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zueve/go-shortener/internal/config"
 	"github.com/zueve/go-shortener/internal/services"
 )
 
 type Server struct {
-	service    services.Service
-	serviceURL string
-	port       int
+	service services.Service
+	ctx     *config.Context
 }
 
-func New(service services.Service, serviceURL string, port int) Server {
-	return Server{service: service, serviceURL: serviceURL, port: port}
+func New(ctx *config.Context, service services.Service) Server {
+	return Server{ctx: ctx, service: service}
 }
 
 func (s *Server) Run() {
 	r := chi.NewRouter()
 	r.Post("/", s.createRedirect)
 	r.Get("/{keyID}", s.redirect)
-	loc := fmt.Sprintf(":%d", s.port)
+	loc := fmt.Sprintf(":%d", s.ctx.Port)
 	http.ListenAndServe(loc, r)
 }
 
@@ -41,6 +41,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Println("invalid parse body")
+			return
 		}
 		url = strings.TrimSuffix(string(urlBytes), "\n")
 	default:
@@ -57,7 +58,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Add url", url)
 	key := s.service.CreateRedirect(url)
-	resultURL := fmt.Sprintf("%s/%s", s.serviceURL, key)
+	resultURL := fmt.Sprintf("%s/%s", s.ctx.ServiceURL, key)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(resultURL))
 }
