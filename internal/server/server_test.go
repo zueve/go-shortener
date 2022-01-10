@@ -16,7 +16,7 @@ import (
 
 func TestServer_createRedirect(t *testing.T) {
 	var storageTest = storage.New()
-	var serviceTest = services.New(&storageTest)
+	var serviceTest = services.New(storageTest)
 	tests := []struct {
 		name        string
 		method      string
@@ -89,7 +89,7 @@ func TestServer_createRedirect(t *testing.T) {
 
 func TestServer_redirect(t *testing.T) {
 	var storageTest = storage.New()
-	var serviceTest = services.New(&storageTest)
+	var serviceTest = services.New(storageTest)
 	var location = "https://example.com"
 	var validKey = serviceTest.CreateRedirect(location)
 	client := http.Client{}

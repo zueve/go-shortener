@@ -12,12 +12,20 @@ type Storage struct {
 	counter int
 }
 
+func New() *Storage {
+	return &Storage{
+		counter: 1,
+		links:   map[string]string{},
+	}
+}
+
 func (c *Storage) Add(url string) string {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	c.counter++
 	key := strconv.Itoa(c.counter)
 	c.links[key] = url
+
 	return key
 }
 
@@ -26,12 +34,6 @@ func (c *Storage) Get(key string) (string, error) {
 	if !ok {
 		return "", errors.New("key not exist")
 	}
-	return url, nil
-}
 
-func New() Storage {
-	return Storage{
-		counter: 1,
-		links:   map[string]string{},
-	}
+	return url, nil
 }

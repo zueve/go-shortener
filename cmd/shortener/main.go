@@ -7,9 +7,9 @@ import (
 )
 
 func main() {
-	var storageTest = storage.New()
-	var serviceTest = services.New(&storageTest)
-	var serverTest = server.New(serviceTest, "http://localhost:8080", 8080)
+	storageTest := storage.New()
+	serviceTest := services.New(storageTest)
+	serverTest := server.New(serviceTest, "http://localhost:8080", 8080)
 
 	serverTest.Run()
 }
