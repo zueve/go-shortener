@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,18 +15,32 @@ import (
 type Server struct {
 	service services.Service
 	ctx     *config.Context
+	srv     *http.Server
 }
 
 func New(ctx *config.Context, service services.Service) Server {
-	return Server{ctx: ctx, service: service}
+	newServer := Server{ctx: ctx, service: service, srv: nil}
+
+	r := chi.NewRouter()
+	r.Post("/", newServer.createRedirect)
+	r.Get("/{keyID}", newServer.redirect)
+	loc := fmt.Sprintf(":%d", newServer.ctx.Port)
+
+	srv := http.Server{
+		Addr:    loc,
+		Handler: r,
+	}
+	newServer.srv = &srv
+
+	return newServer
 }
 
-func (s *Server) Run() {
-	r := chi.NewRouter()
-	r.Post("/", s.createRedirect)
-	r.Get("/{keyID}", s.redirect)
-	loc := fmt.Sprintf(":%d", s.ctx.Port)
-	http.ListenAndServe(loc, r)
+func (s *Server) ListenAndServe() {
+	s.srv.ListenAndServe()
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
 }
 
 func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
