@@ -47,7 +47,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
-	w.Header().Set("content-type", "text/plain")
+
 	var url string
 	switch headerContentType {
 	case "application/x-www-form-urlencoded":
@@ -56,23 +56,20 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	case "text/plain; charset=utf-8":
 		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Println("invalid parse body")
+			s.error(w, http.StatusInternalServerError, "invalid parse body")
 			return
 		}
 		url = strings.TrimSuffix(string(urlBytes), "\n")
 	default:
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		fmt.Println("invalid ContentType")
+		s.error(w, http.StatusUnsupportedMediaType, "invalid ContentType")
 		return
 	}
-
 	if url == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Println("invalid url")
+		s.error(w, http.StatusBadRequest, "invalid url")
 		return
 	}
 
+	w.Header().Set("content-type", "text/plain")
 	fmt.Println("Add url", url)
 	key := s.service.CreateRedirect(url)
 	resultURL := fmt.Sprintf("%s/%s", s.ctx.ServiceURL, key)
@@ -85,8 +82,7 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Call redirect for", key)
 	url, err := s.service.GetURLByKey(key)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Println("invalid key", key)
+		s.error(w, http.StatusBadRequest, "invalid key")
 		return
 	}
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -94,26 +90,22 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
-	w.Header().Set("content-type", "text/plain")
 
 	var redirect Redirect
 	switch headerContentType {
 	case "application/json":
 		dataBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Println("invalid parse body")
+			s.error(w, http.StatusInternalServerError, "invalid parse body")
 			return
 		}
 		err = json.Unmarshal(dataBytes, &redirect)
 		if err != nil || len(redirect.URL) == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Println("invalid parse body")
+			s.error(w, http.StatusBadRequest, "invalid parse body")
 			return
 		}
 	default:
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		fmt.Println("invalid ContentType")
+		s.error(w, http.StatusUnsupportedMediaType, "invalid ContentType")
 		return
 	}
 	fmt.Println("Create redirect for", redirect.URL)
@@ -126,4 +118,11 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(response))
+}
+
+func (s *Server) error(w http.ResponseWriter, code int, msg string) {
+	w.WriteHeader(code)
+	w.Header().Set("content-type", "plain/text")
+	fmt.Println(msg)
+	w.Write([]byte(msg))
 }
