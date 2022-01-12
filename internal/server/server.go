@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,6 +24,7 @@ func New(ctx *config.Context, service services.Service) Server {
 
 	r := chi.NewRouter()
 	r.Post("/", newServer.createRedirect)
+	r.Post("/api/shorten", newServer.createRedirectJSON)
 	r.Get("/{keyID}", newServer.redirect)
 	loc := fmt.Sprintf(":%d", newServer.ctx.Port)
 
@@ -88,4 +90,40 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
+	headerContentType := r.Header.Get("Content-Type")
+	w.Header().Set("content-type", "text/plain")
+
+	var redirect Redirect
+	switch headerContentType {
+	case "application/json":
+		dataBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Println("invalid parse body")
+			return
+		}
+		err = json.Unmarshal(dataBytes, &redirect)
+		if err != nil || len(redirect.URL) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Println("invalid parse body")
+			return
+		}
+	default:
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		fmt.Println("invalid ContentType")
+		return
+	}
+	fmt.Println("Create redirect for", redirect.URL)
+	key := s.service.CreateRedirect(redirect.URL)
+	result := ResultString{
+		Result: fmt.Sprintf("%s/%s", s.ctx.ServiceURL, key),
+	}
+
+	response, _ := json.Marshal(result)
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(response))
 }
