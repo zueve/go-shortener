@@ -1,7 +1,7 @@
 package server
 
 type Redirect struct {
-	URL string `json:"url"`fi
+	URL string `json:"url"`
 }
 
 type ResultString struct {
