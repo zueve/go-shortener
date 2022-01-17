@@ -1,7 +1,7 @@
 package server
 
 type Redirect struct {
-	URL string `json:"url,required"` // required doesn't work
+	URL string `json:"url"`
 }
 
 type ResultString struct {

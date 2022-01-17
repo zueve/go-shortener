@@ -26,10 +26,9 @@ func New(ctx *config.Context, service services.Service) Server {
 	r.Post("/", newServer.createRedirect)
 	r.Post("/api/shorten", newServer.createRedirectJSON)
 	r.Get("/{keyID}", newServer.redirect)
-	loc := fmt.Sprintf(":%d", newServer.ctx.Port)
 
 	srv := http.Server{
-		Addr:    loc,
+		Addr:    newServer.ctx.ServerAddress,
 		Handler: r,
 	}
 	newServer.srv = &srv

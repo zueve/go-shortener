@@ -16,10 +16,7 @@ import (
 func main() {
 	storageVar := storage.New()
 	serviceVar := services.New(storageVar)
-	ctx := config.NewContext(
-		config.WithServiceURL("http://localhost:8080"),
-		config.WithPort(8080),
-	)
+	ctx := config.NewContextFormEnv()
 	serverVar := server.New(ctx, serviceVar)
 	go serverVar.ListenAndServe()
 

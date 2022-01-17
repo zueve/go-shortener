@@ -19,7 +19,7 @@ import (
 func getCtx() *config.Context {
 	return config.NewContext(
 		config.WithServiceURL("http://localhost:8080"),
-		config.WithPort(8080),
+		config.WithServerAddress(":8080"),
 	)
 }
 
