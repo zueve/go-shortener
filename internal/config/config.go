@@ -2,14 +2,16 @@ package config
 
 import (
 	"context"
+
+	"github.com/caarlos0/env"
 )
 
 type ContextOption func(*Context)
 
 type Context struct {
-	ctx        context.Context
-	ServiceURL string
-	Port       int
+	ctx           context.Context
+	ServiceURL    string
+	ServerAddress string
 }
 
 func NewContext(opts ...ContextOption) *Context {
@@ -20,9 +22,22 @@ func NewContext(opts ...ContextOption) *Context {
 	return &uCtx
 }
 
-func WithPort(port int) ContextOption {
+func NewContextFormEnv() *Context {
+	var envronment Env
+	err := env.Parse(&envronment)
+	if err != nil {
+		panic(err)
+	}
+	uCtx := NewContext(
+		WithServiceURL(envronment.BaseURL),
+		WithServerAddress(envronment.ServerAddress),
+	)
+	return uCtx
+}
+
+func WithServerAddress(address string) ContextOption {
 	return func(c *Context) {
-		c.Port = port
+		c.ServerAddress = address
 	}
 }
 
