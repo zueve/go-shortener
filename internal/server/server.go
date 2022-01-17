@@ -100,7 +100,7 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		err = json.Unmarshal(dataBytes, &redirect)
-		if err != nil || len(redirect.URL) == 0 {
+		if err != nil || redirect.URL == "" {
 			s.error(w, http.StatusBadRequest, "invalid parse body")
 			return
 		}
