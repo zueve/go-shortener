@@ -24,7 +24,7 @@ func New(persistent PersistentStorage) *Storage {
 		panic(err)
 	}
 	return &Storage{
-		counter: 1,
+		counter: getMaxKyeToInt(data),
 		links:   data,
 		storage: persistent,
 	}
@@ -52,4 +52,15 @@ func (c *Storage) Get(key string) (string, error) {
 	}
 
 	return url, nil
+}
+
+func getMaxKyeToInt(data map[string]string) int {
+	maxVal := 1
+	for keyStr := range data {
+		keyInt, err := strconv.Atoi(keyStr)
+		if err == nil && maxVal < keyInt {
+			maxVal = keyInt
+		}
+	}
+	return maxVal
 }

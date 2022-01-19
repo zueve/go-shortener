@@ -1,35 +1,33 @@
 package storage
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
 
 func TestFileStorage_test0(t *testing.T) {
-	persistentStorage := NewFileStorage("/tmp/go-shortener-test-123.txt")
-	var err error
+	filename := "go-shortener-test-123.txt"
+	os.Remove(filename)
+	defer os.Remove(filename)
+	persistentStorage := NewFileStorage(filename)
 
 	expected := map[string]string{"1": "1", "2": "2", "3": "3"}
-	var result map[string]string
-	err = persistentStorage.Add("1", "1")
-	if err != nil {
-		t.Errorf("%s", err)
+	for _, ch := range "123" {
+		err := persistentStorage.Add(string(ch), string(ch))
+		if err != nil {
+			t.Errorf("%s %s", string(ch), err)
+		}
 	}
-	err = persistentStorage.Add("2", "2")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	err = persistentStorage.Add("3", "3")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	result, err = persistentStorage.Load()
+
+	result, err := persistentStorage.Load()
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	if reflect.DeepEqual(result, expected) {
-		t.Errorf("Invalid result")
+	persistentStorage.Close()
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Invalid result 1 %s, %s", result, expected)
 	}
 
 	// close storage and load again
@@ -41,7 +39,8 @@ func TestFileStorage_test0(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	if reflect.DeepEqual(result, expected) {
-		t.Errorf("Invalid result")
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Invalid result 2 %s, %s", result, expected)
 	}
+	persistentStorage.Close()
 }

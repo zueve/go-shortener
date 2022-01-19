@@ -10,7 +10,8 @@ import (
 const maxCapacity = 1024
 
 type FileStorage struct {
-	file *os.File
+	file     *os.File
+	filename string
 }
 
 type Row struct {
@@ -24,7 +25,7 @@ func NewFileStorage(filename string) *FileStorage {
 		panic(err)
 	}
 
-	return &FileStorage{file: file}
+	return &FileStorage{file: file, filename: filename}
 }
 
 func (s *FileStorage) Close() error {
@@ -32,39 +33,49 @@ func (s *FileStorage) Close() error {
 }
 
 func (s *FileStorage) Load() (map[string]string, error) {
-	scanner := bufio.NewScanner(s.file)
-
+	file, err := os.OpenFile(s.filename, os.O_RDONLY|os.O_CREATE, 0777)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(file)
 	buf := make([]byte, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
 	data := make(map[string]string)
-
 	for scanner.Scan() {
 		rawRow := scanner.Bytes()
 		var row Row
 		err := json.Unmarshal(rawRow, &row)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			data[row.Key] = row.Value
 		}
-		data[row.Key] = row.Value
 	}
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-
+	if err := file.Close(); err != nil {
+		log.Fatal(err)
+	}
 	return data, nil
 }
 
 func (s *FileStorage) Add(key string, val string) error {
-	// row := Row{Key: key, Value: val}
-	// data, err := json.Marshal(row)
-	// if err != nil {
-	// 	return err
-	// }
-	// data = append(data, '\n')
-	// _, err = s.file.Write(data)
-	// if err != nil {
-	// 	return err
-	// }
+	row := Row{Key: key, Value: val}
+	data, err := json.Marshal(row)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	_, err = s.file.Write(data)
+
+	if err != nil {
+		return err
+	}
+
+	err = s.file.Sync()
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +17,8 @@ import (
 	"github.com/zueve/go-shortener/internal/storage"
 )
 
+const filename = "/tmp/go-shortener-test.txt"
+
 func getCtx() *config.Context {
 	return config.NewContext(
 		config.WithServiceURL("http://localhost:8080"),
@@ -24,7 +27,9 @@ func getCtx() *config.Context {
 }
 
 func TestServer_createRedirect(t *testing.T) {
-	persistentStorage := storage.NewFileStorage("/tmp/go-shortener-test.txt")
+	os.Remove(filename)
+	persistentStorage := storage.NewFileStorage(filename)
+	defer persistentStorage.Close()
 	storageTest := storage.New(persistentStorage)
 	serviceTest := services.New(storageTest)
 	tests := []struct {
@@ -98,7 +103,8 @@ func TestServer_createRedirect(t *testing.T) {
 }
 
 func TestServer_redirect(t *testing.T) {
-	persistentStorage := storage.NewFileStorage("/tmp/go-shortener-test.txt")
+	os.Remove(filename)
+	persistentStorage := storage.NewFileStorage(filename)
 	storageTest := storage.New(persistentStorage)
 	serviceTest := services.New(storageTest)
 	location := "https://example.com"
@@ -156,10 +162,12 @@ func TestServer_redirect(t *testing.T) {
 
 		})
 	}
+	persistentStorage.Close()
 }
 
 func TestServer_createRedirectJSON(t *testing.T) {
-	persistentStorage := storage.NewFileStorage("/tmp/go-shortener-test.txt")
+	os.Remove(filename)
+	persistentStorage := storage.NewFileStorage(filename)
 	storageTest := storage.New(persistentStorage)
 	serviceTest := services.New(storageTest)
 	tests := []struct {
