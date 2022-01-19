@@ -9,9 +9,10 @@ import (
 type ContextOption func(*Context)
 
 type Context struct {
-	ctx           context.Context
-	ServiceURL    string
-	ServerAddress string
+	ctx             context.Context
+	ServiceURL      string
+	ServerAddress   string
+	FileStoragePath string
 }
 
 func NewContext(opts ...ContextOption) *Context {
@@ -31,6 +32,7 @@ func NewContextFormEnv() *Context {
 	uCtx := NewContext(
 		WithServiceURL(envronment.BaseURL),
 		WithServerAddress(envronment.ServerAddress),
+		WithFileStoragePath(envronment.FileStoragePath),
 	)
 	return uCtx
 }
@@ -44,5 +46,11 @@ func WithServerAddress(address string) ContextOption {
 func WithServiceURL(serviceURL string) ContextOption {
 	return func(c *Context) {
 		c.ServiceURL = serviceURL
+	}
+}
+
+func WithFileStoragePath(path string) ContextOption {
+	return func(c *Context) {
+		c.FileStoragePath = path
 	}
 }

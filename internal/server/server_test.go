@@ -24,8 +24,9 @@ func getCtx() *config.Context {
 }
 
 func TestServer_createRedirect(t *testing.T) {
-	var storageTest = storage.New()
-	var serviceTest = services.New(storageTest)
+	persistentStorage := storage.NewFileStorage("/tmp/go-shortener-test.txt")
+	storageTest := storage.New(persistentStorage)
+	serviceTest := services.New(storageTest)
 	tests := []struct {
 		name        string
 		method      string
@@ -97,10 +98,11 @@ func TestServer_createRedirect(t *testing.T) {
 }
 
 func TestServer_redirect(t *testing.T) {
-	var storageTest = storage.New()
-	var serviceTest = services.New(storageTest)
-	var location = "https://example.com"
-	var validKey = serviceTest.CreateRedirect(location)
+	persistentStorage := storage.NewFileStorage("/tmp/go-shortener-test.txt")
+	storageTest := storage.New(persistentStorage)
+	serviceTest := services.New(storageTest)
+	location := "https://example.com"
+	validKey := serviceTest.CreateRedirect(location)
 	client := http.Client{}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -157,8 +159,9 @@ func TestServer_redirect(t *testing.T) {
 }
 
 func TestServer_createRedirectJSON(t *testing.T) {
-	var storageTest = storage.New()
-	var serviceTest = services.New(storageTest)
+	persistentStorage := storage.NewFileStorage("/tmp/go-shortener-test.txt")
+	storageTest := storage.New(persistentStorage)
+	serviceTest := services.New(storageTest)
 	tests := []struct {
 		name        string
 		method      string

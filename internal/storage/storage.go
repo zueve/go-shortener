@@ -6,16 +6,27 @@ import (
 	"sync"
 )
 
+type PersistentStorage interface {
+	Load() (map[string]string, error)
+	Add(key string, val string) error
+}
+
 type Storage struct {
 	sync.RWMutex
 	links   map[string]string
 	counter int
+	storage PersistentStorage
 }
 
-func New() *Storage {
+func New(persistent PersistentStorage) *Storage {
+	data, err := persistent.Load()
+	if err != nil {
+		panic(err)
+	}
 	return &Storage{
 		counter: 1,
-		links:   map[string]string{},
+		links:   data,
+		storage: persistent,
 	}
 }
 
@@ -26,6 +37,7 @@ func (c *Storage) Add(url string) string {
 	c.counter++
 	key := strconv.Itoa(c.counter)
 	c.links[key] = url
+	c.storage.Add(key, url)
 
 	return key
 }

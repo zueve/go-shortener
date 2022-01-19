@@ -14,9 +14,11 @@ import (
 )
 
 func main() {
-	storageVar := storage.New()
-	serviceVar := services.New(storageVar)
 	ctx := config.NewContextFormEnv()
+	persistentStorage := storage.NewFileStorage(ctx.FileStoragePath)
+	defer persistentStorage.Close()
+	storageVar := storage.New(persistentStorage)
+	serviceVar := services.New(storageVar)
 	serverVar := server.New(ctx, serviceVar)
 	go serverVar.ListenAndServe()
 
