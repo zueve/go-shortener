@@ -30,12 +30,12 @@ func NewContextFromEnvAndCMD() *Context {
 	if err != nil {
 		panic(err)
 	}
-	baseUrl := flag.String("b", envronment.BaseURL, "a string")
+	baseURL := flag.String("b", envronment.BaseURL, "a string")
 	serverAddress := flag.String("s", envronment.ServerAddress, "a string")
 	fileStoragePath := flag.String("f", envronment.FileStoragePath, "a string")
 	flag.Parse()
 	uCtx := NewContext(
-		WithServiceURL(*baseUrl),
+		WithServiceURL(*baseURL),
 		WithServerAddress(*serverAddress),
 		WithFileStoragePath(*fileStoragePath),
 	)
