@@ -7,7 +7,7 @@ import (
 )
 
 func TestFileStorage_test0(t *testing.T) {
-	filename := "go-shortener-test-123.txt"
+	filename := "/tmp/go-shortener-test-123.txt"
 	os.Remove(filename)
 	defer os.Remove(filename)
 	persistentStorage := NewFileStorage(filename)
@@ -32,7 +32,7 @@ func TestFileStorage_test0(t *testing.T) {
 
 	// close storage and load again
 	persistentStorage.Close()
-	persistentStorage = NewFileStorage("/tmp/go-shortener-test-123.txt")
+	persistentStorage = NewFileStorage(filename)
 
 	result, err = persistentStorage.Load()
 	if err != nil {
