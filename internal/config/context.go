@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"flag"
 
 	"github.com/caarlos0/env"
 )
@@ -23,16 +24,20 @@ func NewContext(opts ...ContextOption) *Context {
 	return &uCtx
 }
 
-func NewContextFormEnv() *Context {
+func NewContextFromEnvAndCMD() *Context {
 	var envronment Env
 	err := env.Parse(&envronment)
 	if err != nil {
 		panic(err)
 	}
+	baseUrl := flag.String("b", envronment.BaseURL, "a string")
+	serverAddress := flag.String("s", envronment.ServerAddress, "a string")
+	fileStoragePath := flag.String("f", envronment.FileStoragePath, "a string")
+	flag.Parse()
 	uCtx := NewContext(
-		WithServiceURL(envronment.BaseURL),
-		WithServerAddress(envronment.ServerAddress),
-		WithFileStoragePath(envronment.FileStoragePath),
+		WithServiceURL(*baseUrl),
+		WithServerAddress(*serverAddress),
+		WithFileStoragePath(*fileStoragePath),
 	)
 	return uCtx
 }

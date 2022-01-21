@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	ctx := config.NewContextFormEnv()
+	ctx := config.NewContextFromEnvAndCMD()
 	persistentStorage := storage.NewFileStorage(ctx.FileStoragePath)
 	defer persistentStorage.Close()
 	storageVar := storage.New(persistentStorage)
