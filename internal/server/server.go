@@ -55,6 +55,12 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		url = r.FormValue("url")
 	case "application/x-gzip":
+		urlBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			s.error(w, http.StatusInternalServerError, "invalid parse body")
+			return
+		}
+		url = strings.TrimSuffix(string(urlBytes), "\n")
 	case "text/plain; charset=utf-8":
 		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
