@@ -54,6 +54,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	case "application/x-www-form-urlencoded":
 		r.ParseForm()
 		url = r.FormValue("url")
+	case "application/x-gzip":
 	case "text/plain; charset=utf-8":
 		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
