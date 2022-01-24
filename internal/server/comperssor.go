@@ -51,8 +51,6 @@ func ungzipHandle(next http.Handler) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer gz.Close()
-		w.Header().Set("Content-Encoding", "gzip")
 		r.Body = gz
 		next.ServeHTTP(w, r)
 	})
