@@ -23,6 +23,8 @@ func New(ctx *config.Context, service services.Service) Server {
 	newServer := Server{ctx: ctx, service: service, srv: nil}
 
 	r := chi.NewRouter()
+	r.Use(ungzipHandle)
+	r.Use(gzipHandle)
 	r.Post("/", newServer.createRedirect)
 	r.Post("/api/shorten", newServer.createRedirectJSON)
 	r.Get("/{keyID}", newServer.redirect)
