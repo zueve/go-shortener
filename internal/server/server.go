@@ -60,6 +60,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 	r.Post("/", s.createRedirect)
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
+	r.Get("/user/urls", s.GetAllUserURLs)
 
 	srv := http.Server{
 		Addr:    s.serverAddress,
@@ -80,6 +81,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
+	userID, err := getUserID(r)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+	}
 
 	var url string
 	switch headerContentType {
@@ -111,16 +116,20 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	fmt.Println("Add url", url)
-	key := s.service.CreateRedirect(url)
+	key := s.service.CreateRedirect(url, userID)
 	resultURL := fmt.Sprintf("%s/%s", s.serviceURL, key)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(resultURL))
 }
 
 func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserID(r)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+	}
 	key := chi.URLParam(r, "keyID")
 	fmt.Println("Call redirect for", key)
-	url, err := s.service.GetURLByKey(key)
+	url, err := s.service.GetURLByKey(key, userID)
 	if err != nil {
 		s.error(w, http.StatusBadRequest, "invalid key", err)
 		return
@@ -130,6 +139,10 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
+	userID, err := getUserID(r)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+	}
 
 	var redirect Redirect
 	switch headerContentType {
@@ -149,14 +162,42 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("Create redirect for", redirect.URL)
-	key := s.service.CreateRedirect(redirect.URL)
+	key := s.service.CreateRedirect(redirect.URL, userID)
 	result := ResultString{
 		Result: fmt.Sprintf("%s/%s", s.serviceURL, key),
 	}
 
-	response, _ := json.Marshal(result)
+	response, err := json.Marshal(result)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "internal error", err)
+		return
+	}
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(response))
+}
+
+func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserID(r)
+	if err != nil {
+		fmt.Println(err)
+		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+	}
+	linksMap := s.service.GetAllUserURLs(userID)
+
+	result := make([]URLRow, 0)
+	for key, url := range linksMap {
+		shorten := fmt.Sprintf("%s/%s", s.serverAddress, key)
+		row := URLRow{OriginalURL: url, ShortURL: shorten}
+		result = append(result, row)
+	}
+	fmt.Println(result)
+	response, err := json.Marshal(result)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "internal server error", err)
+	}
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(response))
 }
 

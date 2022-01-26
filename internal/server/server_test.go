@@ -47,6 +47,7 @@ func NewTestServer() (TestServer, error) {
 	r := chi.NewRouter()
 	r.Use(ungzipHandle)
 	r.Use(gzipHandle)
+	r.Use(setCookieHandler)
 	r.Post("/", s.createRedirect)
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
@@ -147,7 +148,7 @@ func TestServer_redirect(t *testing.T) {
 	ts, _ := NewTestServer()
 	defer ts.Close()
 	location := "https://example.com"
-	validKey := ts.service.CreateRedirect(location)
+	validKey := ts.service.CreateRedirect(location, "1")
 	client := http.Client{}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse

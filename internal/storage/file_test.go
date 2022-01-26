@@ -16,10 +16,13 @@ func TestFileStorage_test0(t *testing.T) {
 	persistentStorage, err := NewFileStorage(file.Name())
 	assert.Nil(t, err)
 
-	expected := map[string]string{"1": "1", "2": "2", "3": "3"}
-	for _, ch := range "123" {
-		err := persistentStorage.Add(string(ch), string(ch))
+	expected := make([]Row, 3)
+	for i, ch := range "123" {
+		ch := string(ch)
+		row := Row{Key: ch, OriginURL: ch, UserID: ch}
+		err := persistentStorage.Add(row)
 		assert.Nil(t, err)
+		expected[i] = row
 	}
 
 	result, err := persistentStorage.Load()
