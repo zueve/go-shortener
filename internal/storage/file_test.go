@@ -2,45 +2,36 @@ package storage
 
 import (
 	"os"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFileStorage_test0(t *testing.T) {
-	filename := "/tmp/go-shortener-test-123.txt"
-	os.Remove(filename)
-	defer os.Remove(filename)
-	persistentStorage := NewFileStorage(filename)
+	file, err := os.CreateTemp("", "go_shortener")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer os.Remove(file.Name())
+	persistentStorage, err := NewFileStorage(file.Name())
+	assert.Nil(t, err)
 
 	expected := map[string]string{"1": "1", "2": "2", "3": "3"}
 	for _, ch := range "123" {
 		err := persistentStorage.Add(string(ch), string(ch))
-		if err != nil {
-			t.Errorf("%s %s", string(ch), err)
-		}
+		assert.Nil(t, err)
 	}
 
 	result, err := persistentStorage.Load()
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	persistentStorage.Close()
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("Invalid result 1 %s, %s", result, expected)
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, result, expected, "they should be equal")
 
 	// close storage and load again
 	persistentStorage.Close()
-	persistentStorage = NewFileStorage(filename)
+	persistentStorage, _ = NewFileStorage(file.Name())
+	defer persistentStorage.Close()
 
 	result, err = persistentStorage.Load()
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("Invalid result 2 %s, %s", result, expected)
-	}
-	persistentStorage.Close()
+	assert.Nil(t, err)
+	assert.Equal(t, result, expected, "they should be equal")
 }

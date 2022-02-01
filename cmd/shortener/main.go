@@ -18,15 +18,25 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	persistentStorage := storage.NewFileStorage(conf.FileStoragePath)
+	persistentStorage, err := storage.NewFileStorage(conf.FileStoragePath)
+	if err != nil {
+		panic(err)
+	}
 	defer persistentStorage.Close()
-	storageVar := storage.New(persistentStorage)
+	storageVar, err := storage.New(persistentStorage)
+	if err != nil {
+		panic(err)
+	}
 	serviceVar := services.New(storageVar)
-	serverVar := server.New(
+	serverVar, err := server.New(
 		serviceVar,
 		server.WithAddress(conf.ServerAddress),
 		server.WithURL(conf.BaseURL),
 	)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Started at", conf.ServerAddress)
 	go serverVar.ListenAndServe()
 
 	// Setting up signal capturing

@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type PersistentStorage interface {
+type PersistentStorageExpected interface {
 	Load() (map[string]string, error)
 	Add(key string, val string) error
 }
@@ -15,19 +15,19 @@ type Storage struct {
 	sync.RWMutex
 	links   map[string]string
 	counter int
-	storage PersistentStorage
+	storage PersistentStorageExpected
 }
 
-func New(persistent PersistentStorage) *Storage {
+func New(persistent PersistentStorageExpected) (*Storage, error) {
 	data, err := persistent.Load()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return &Storage{
 		counter: getMaxKyeToInt(data),
 		links:   data,
 		storage: persistent,
-	}
+	}, nil
 }
 
 func (c *Storage) Add(url string) string {
