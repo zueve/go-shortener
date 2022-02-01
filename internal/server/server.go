@@ -9,33 +9,47 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/zueve/go-shortener/internal/config"
 	"github.com/zueve/go-shortener/internal/services"
 )
 
 type Server struct {
-	service services.Service
-	ctx     *config.Context
-	srv     *http.Server
+	service       services.Service
+	srv           *http.Server
+	ServerAddress string
+	ServiceURL    string
 }
 
-func New(ctx *config.Context, service services.Service) Server {
-	newServer := Server{ctx: ctx, service: service, srv: nil}
+func New(service services.Service, opts ...ServerOption) Server {
+	const (
+		defaultServerAddress = ":8080"
+		defaultServiceURL    = "http://localhost:8080"
+	)
+
+	s := Server{
+		srv:           nil,
+		service:       service,
+		ServerAddress: defaultServerAddress,
+		ServiceURL:    defaultServiceURL,
+	}
+
+	for _, opt := range opts {
+		opt(&s)
+	}
 
 	r := chi.NewRouter()
 	r.Use(ungzipHandle)
 	r.Use(gzipHandle)
-	r.Post("/", newServer.createRedirect)
-	r.Post("/api/shorten", newServer.createRedirectJSON)
-	r.Get("/{keyID}", newServer.redirect)
+	r.Post("/", s.createRedirect)
+	r.Post("/api/shorten", s.createRedirectJSON)
+	r.Get("/{keyID}", s.redirect)
 
 	srv := http.Server{
-		Addr:    newServer.ctx.ServerAddress,
+		Addr:    s.ServerAddress,
 		Handler: r,
 	}
-	newServer.srv = &srv
+	s.srv = &srv
 
-	return newServer
+	return s
 }
 
 func (s *Server) ListenAndServe() {
@@ -80,7 +94,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "text/plain")
 	fmt.Println("Add url", url)
 	key := s.service.CreateRedirect(url)
-	resultURL := fmt.Sprintf("%s/%s", s.ctx.ServiceURL, key)
+	resultURL := fmt.Sprintf("%s/%s", s.ServiceURL, key)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(resultURL))
 }
@@ -119,7 +133,7 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Create redirect for", redirect.URL)
 	key := s.service.CreateRedirect(redirect.URL)
 	result := ResultString{
-		Result: fmt.Sprintf("%s/%s", s.ctx.ServiceURL, key),
+		Result: fmt.Sprintf("%s/%s", s.ServiceURL, key),
 	}
 
 	response, _ := json.Marshal(result)

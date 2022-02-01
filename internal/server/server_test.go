@@ -12,19 +12,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/zueve/go-shortener/internal/config"
 	"github.com/zueve/go-shortener/internal/services"
 	"github.com/zueve/go-shortener/internal/storage"
 )
 
 const filename = "/tmp/go-shortener-test.txt"
-
-func getCtx() *config.Context {
-	return config.NewContext(
-		config.WithServiceURL("http://localhost:8080"),
-		config.WithServerAddress(":8080"),
-	)
-}
 
 func TestServer_createRedirect(t *testing.T) {
 	os.Remove(filename)
@@ -83,7 +75,7 @@ func TestServer_createRedirect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := New(getCtx(), serviceTest)
+			s := New(serviceTest)
 			data := url.Values{}
 			data.Set(tt.urlKey, tt.urlVal)
 
@@ -137,7 +129,7 @@ func TestServer_redirect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := New(getCtx(), serviceTest)
+			s := New(serviceTest)
 
 			r := chi.NewRouter()
 			r.Get("/{keyID}", s.redirect)
@@ -205,7 +197,7 @@ func TestServer_createRedirectJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := New(getCtx(), serviceTest)
+			s := New(serviceTest)
 			request := httptest.NewRequest(tt.method, "/", bytes.NewBufferString(tt.data))
 			request.Header.Set("Content-Type", tt.contentType)
 			w := httptest.NewRecorder()
