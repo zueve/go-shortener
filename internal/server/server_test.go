@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -51,6 +52,7 @@ func NewTestServer() (TestServer, error) {
 	r.Post("/", s.createRedirect)
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
+	r.Get("/user/urls", s.GetAllUserURLs)
 	ts := httptest.NewServer(r)
 
 	srv := TestServer{
@@ -256,4 +258,68 @@ func TestServer_createRedirectJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_GetAllUserURLs(t *testing.T) {
+	ts, _ := NewTestServer()
+	defer ts.Close()
+
+	jar, _ := cookiejar.New(nil)
+
+	client := http.Client{Jar: jar}
+	assert := assert.New(t)
+
+	type row struct {
+		ShortURL    string `json:"short_url"`
+		OriginalURL string `json:"original_url"`
+	}
+	type request struct {
+		URL string `json:"url"`
+	}
+
+	expected := []row{
+		{
+			ShortURL:    "http://localhost:8080/2",
+			OriginalURL: "http://example.com",
+		},
+		{
+			ShortURL:    "http://localhost:8080/3",
+			OriginalURL: "http://example.com/3",
+		},
+	}
+
+	// get empty list
+	resp, err := client.Get(fmt.Sprintf("%s/user/urls", ts.URL))
+	assert.Nil(err)
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	assert.Nil(err)
+	body := make([]row, 0)
+	json.Unmarshal(bodyBytes, &body)
+	assert.Equal(body, make([]row, 0), "body should be empty")
+
+	for i := range expected {
+		contentType := "application/json"
+		url := fmt.Sprintf("%s/api/shorten", ts.URL)
+		data := request{URL: expected[i].OriginalURL}
+		dataByte, err := json.Marshal(data)
+		assert.Nil(err)
+		resp, err := client.Post(url, contentType, bytes.NewBuffer(dataByte))
+		assert.Nil(err)
+		defer resp.Body.Close()
+		assert.Equal(resp.StatusCode, 201, "statuses should be equal")
+	}
+
+	// get list
+	resp, err = client.Get(fmt.Sprintf("%s/user/urls", ts.URL))
+	assert.Nil(err)
+	defer resp.Body.Close()
+
+	bodyBytes, err = io.ReadAll(resp.Body)
+	assert.Nil(err)
+
+	body = make([]row, 0)
+	json.Unmarshal(bodyBytes, &body)
+	assert.Equal(body, expected, "body should be empty")
 }

@@ -185,11 +185,14 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	linksMap := s.service.GetAllUserURLs(userID)
 
-	result := make([]URLRow, 0)
+	result := make([]URLRow, len(linksMap))
+	i := 0
 	for key, url := range linksMap {
-		shorten := fmt.Sprintf("%s/%s", s.serverAddress, key)
-		row := URLRow{OriginalURL: url, ShortURL: shorten}
-		result = append(result, row)
+		result[i] = URLRow{
+			OriginalURL: url,
+			ShortURL:    fmt.Sprintf("%s/%s", s.serviceURL, key),
+		}
+		i = i + 1
 	}
 	fmt.Println(result)
 	response, err := json.Marshal(result)
