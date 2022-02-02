@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"strconv"
 	"sync"
@@ -15,6 +17,7 @@ type Row struct {
 type PersistentStorageExpected interface {
 	Load() ([]Row, error)
 	Add(val Row) error
+	Close() error
 }
 
 type Storage struct {
@@ -22,9 +25,10 @@ type Storage struct {
 	links   map[string]Row
 	counter int
 	storage PersistentStorageExpected
+	db      *sql.DB
 }
 
-func New(persistent PersistentStorageExpected) (*Storage, error) {
+func New(persistent PersistentStorageExpected, db *sql.DB) (*Storage, error) {
 	data, err := persistent.Load()
 	dataMap := make(map[string]Row)
 	for i := range data {
@@ -33,11 +37,17 @@ func New(persistent PersistentStorageExpected) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &Storage{
 		counter: getMaxKeyToInt(data),
 		links:   dataMap,
 		storage: persistent,
+		db:      db,
 	}, nil
+}
+
+func (c *Storage) Ping(ctx context.Context) error {
+	return c.db.PingContext(ctx)
 }
 
 func (c *Storage) Add(url string, userID string) string {

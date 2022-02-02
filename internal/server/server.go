@@ -61,6 +61,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
 	r.Get("/user/urls", s.GetAllUserURLs)
+	r.Get("/ping", s.PingStorage)
 
 	srv := http.Server{
 		Addr:    s.serverAddress,
@@ -204,12 +205,23 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(response))
 }
 
+func (s *Server) PingStorage(w http.ResponseWriter, r *http.Request) {
+	err := s.service.Ping(r.Context())
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "Storage Unavailable", err)
+		return
+	}
+	w.Header().Set("content-type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
 func (s *Server) error(w http.ResponseWriter, code int, msg string, err error) {
 	if err != nil {
 		fmt.Println(err)
 	}
 	w.WriteHeader(code)
-	w.Header().Set("content-type", "plain/text")
+	w.Header().Set("content-type", "text/plain")
 	fmt.Println(msg)
 	w.Write([]byte(msg))
 }

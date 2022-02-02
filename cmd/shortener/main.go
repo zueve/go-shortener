@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"os/signal"
 	"time"
 
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/zueve/go-shortener/internal/config"
 	"github.com/zueve/go-shortener/internal/server"
 	"github.com/zueve/go-shortener/internal/services"
@@ -23,7 +25,14 @@ func main() {
 		panic(err)
 	}
 	defer persistentStorage.Close()
-	storageVar, err := storage.New(persistentStorage)
+
+	db, err := sql.Open("pgx", conf.DatabaseDSN)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	storageVar, err := storage.New(persistentStorage, db)
 	if err != nil {
 		panic(err)
 	}

@@ -1,9 +1,12 @@
 package services
 
+import "context"
+
 type IStorage interface {
 	Get(key string) (string, error)
 	Add(url string, userID string) string
 	GetAllUserURLs(userID string) map[string]string
+	Ping(ctx context.Context) error
 }
 
 type Service struct {
@@ -26,4 +29,8 @@ func (s *Service) GetURLByKey(key string, userID string) (string, error) {
 
 func (s *Service) GetAllUserURLs(userID string) map[string]string {
 	return s.storage.GetAllUserURLs(userID)
+}
+
+func (s *Service) Ping(ctx context.Context) error {
+	return s.storage.Ping(ctx)
 }

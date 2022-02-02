@@ -34,7 +34,7 @@ func NewTestServer() (TestServer, error) {
 	}
 	os.Remove(file.Name())
 	persistentStorage, _ := storage.NewFileStorage(file.Name())
-	storageTest, err := storage.New(persistentStorage)
+	storageTest, err := storage.New(persistentStorage, nil)
 	if err != nil {
 		return TestServer{}, err
 	}
