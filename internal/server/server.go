@@ -200,13 +200,16 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 		}
 		i = i + 1
 	}
-	fmt.Println(result)
 	response, err := json.Marshal(result)
 	if err != nil {
 		s.error(w, http.StatusInternalServerError, "internal server error", err)
 	}
+	status := http.StatusOK
+	if len(response) == 0 {
+		status = http.StatusNoContent
+	}
 	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(status)
 	w.Write([]byte(response))
 }
 
