@@ -57,6 +57,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 	r := chi.NewRouter()
 	r.Use(ungzipHandle)
 	r.Use(gzipHandle)
+	r.Use(setCookieHandler)
 	r.Post("/", s.createRedirect)
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
@@ -84,7 +85,8 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
 	userID, err := getUserID(r)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		return
 	}
 
 	var url string
@@ -126,7 +128,8 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		return
 	}
 	key := chi.URLParam(r, "keyID")
 	fmt.Println("Call redirect for", key)
@@ -142,7 +145,8 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
 	userID, err := getUserID(r)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		return
 	}
 
 	var redirect Redirect
@@ -182,7 +186,8 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
 		fmt.Println(err)
-		s.error(w, http.StatusInternalServerError, "invalid parse token", err)
+		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		return
 	}
 	linksMap := s.service.GetAllUserURLs(userID)
 

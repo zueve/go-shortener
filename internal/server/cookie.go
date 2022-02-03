@@ -19,11 +19,11 @@ const (
 func setCookieHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenCookie, err := r.Cookie(tokenHeaderName)
-
 		var token string
 		if err == http.ErrNoCookie {
 			token = ""
 		} else if err != nil {
+			fmt.Println("Can't read cookie", err)
 			cancel(w)
 		} else {
 			token = tokenCookie.Value
@@ -41,6 +41,7 @@ func setCookieHandler(next http.Handler) http.Handler {
 				MaxAge: tokenHeaderAge,
 				Path:   "/",
 			}
+			fmt.Println("Set token", cookie.Name)
 			http.SetCookie(w, cookie)
 			r.AddCookie(cookie)
 		}
@@ -50,6 +51,7 @@ func setCookieHandler(next http.Handler) http.Handler {
 }
 
 func validateToken(token string) bool {
+	fmt.Println("validateToken", token)
 	data, err := hex.DecodeString(token)
 	if err != nil || len(data) < 32 {
 		return false
