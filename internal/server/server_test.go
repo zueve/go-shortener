@@ -27,23 +27,17 @@ type TestServer struct {
 	filename          string
 }
 
-func NewTestServer() (TestServer, error) {
+func NewTestServer(t *testing.T) TestServer {
 	file, err := os.CreateTemp("", "go_shortener")
-	if err != nil {
-		return TestServer{}, err
-	}
+	assert.Nil(t, err)
 	os.Remove(file.Name())
 	persistentStorage, _ := storage.NewFileStorage(file.Name())
 	storageTest, err := storage.New(persistentStorage, nil)
-	if err != nil {
-		return TestServer{}, err
-	}
+	assert.Nil(t, err)
 	serviceTest := services.New(storageTest)
 
 	s, err := New(serviceTest)
-	if err != nil {
-		return TestServer{}, err
-	}
+	assert.Nil(t, err)
 
 	r := chi.NewRouter()
 	r.Use(ungzipHandle)
@@ -63,7 +57,7 @@ func NewTestServer() (TestServer, error) {
 		filename:          file.Name(),
 	}
 
-	return srv, nil
+	return srv
 }
 
 func (s *TestServer) Close() {
@@ -73,7 +67,7 @@ func (s *TestServer) Close() {
 }
 
 func TestServer_createRedirect(t *testing.T) {
-	ts, _ := NewTestServer()
+	ts := NewTestServer(t)
 	defer ts.Close()
 	client := http.Client{}
 	reqURL := fmt.Sprintf("%s/", ts.URL)
@@ -147,7 +141,7 @@ func TestServer_createRedirect(t *testing.T) {
 }
 
 func TestServer_redirect(t *testing.T) {
-	ts, _ := NewTestServer()
+	ts := NewTestServer(t)
 	defer ts.Close()
 	location := "https://example.com"
 	validKey := ts.service.CreateRedirect(location, "1")
@@ -197,7 +191,7 @@ func TestServer_redirect(t *testing.T) {
 }
 
 func TestServer_createRedirectJSON(t *testing.T) {
-	ts, _ := NewTestServer()
+	ts := NewTestServer(t)
 	defer ts.Close()
 
 	client := http.Client{}
@@ -261,7 +255,7 @@ func TestServer_createRedirectJSON(t *testing.T) {
 }
 
 func TestServer_GetAllUserURLs(t *testing.T) {
-	ts, _ := NewTestServer()
+	ts := NewTestServer(t)
 	defer ts.Close()
 
 	jar, _ := cookiejar.New(nil)
