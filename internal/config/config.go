@@ -23,10 +23,12 @@ func NewFromEnvAndCMD() (Config, error) {
 	b := flag.String("b", config.BaseURL, "a string")
 	s := flag.String("s", config.ServerAddress, "a string")
 	f := flag.String("f", config.FileStoragePath, "a string")
+	d := flag.String("d", config.DatabaseDSN, "a string")
 	flag.Parse()
 
 	config.BaseURL = *b
 	config.ServerAddress = *s
 	config.FileStoragePath = *f
+	config.DatabaseDSN = *d
 	return config, nil
 }
