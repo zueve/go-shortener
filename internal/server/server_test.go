@@ -30,8 +30,10 @@ type TestServer struct {
 func NewTestServer(t *testing.T) TestServer {
 	file, err := os.CreateTemp("", "go_shortener")
 	assert.Nil(t, err)
+	defer os.Remove(file.Name())
 	os.Remove(file.Name())
 	persistentStorage, _ := storage.NewFileStorage(file.Name())
+	defer persistentStorage.Close()
 	storageTest, err := storage.New(persistentStorage, nil)
 	assert.Nil(t, err)
 	serviceTest := services.New(storageTest)
@@ -284,10 +286,11 @@ func TestServer_GetAllUserURLs(t *testing.T) {
 
 	// get empty list
 	resp, err := client.Get(fmt.Sprintf("%s/user/urls", ts.URL))
+	assert.Equal(http.StatusNoContent, resp.StatusCode, "invalid status")
 	assert.Nil(err)
-	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	assert.Nil(err)
 	body := make([]row, 0)
 	json.Unmarshal(bodyBytes, &body)
@@ -308,9 +311,10 @@ func TestServer_GetAllUserURLs(t *testing.T) {
 	// get list
 	resp, err = client.Get(fmt.Sprintf("%s/user/urls", ts.URL))
 	assert.Nil(err)
-	defer resp.Body.Close()
+	assert.Equal(http.StatusOK, resp.StatusCode, "invalid status")
 
 	bodyBytes, err = io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	assert.Nil(err)
 
 	body = make([]row, 0)

@@ -18,6 +18,7 @@ type Server struct {
 	srv           *http.Server
 	serverAddress string
 	serviceURL    string
+	pingTimeout   int
 }
 
 type ServerOption func(*Server) error
@@ -40,6 +41,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 	const (
 		defaultServerAddress = ":8080"
 		defaultServiceURL    = "http://localhost:8080"
+		pingTimeout          = 1 * time.Second
 	)
 
 	s := Server{
@@ -206,7 +208,8 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 		s.error(w, http.StatusInternalServerError, "internal server error", err)
 	}
 	status := http.StatusOK
-	if len(response) == 0 {
+	fmt.Println("Empty!!!", len(linksMap), linksMap)
+	if len(linksMap) == 0 {
 		status = http.StatusNoContent
 	}
 	w.Header().Set("content-type", "application/json")
@@ -215,7 +218,7 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) PingStorage(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(s.pingTimeout))
 	defer cancel()
 	err := s.service.Ping(ctx)
 	if err != nil {
