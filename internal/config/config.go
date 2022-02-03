@@ -1,33 +1,31 @@
 package config
 
 import (
-	"context"
+	"flag"
+
+	"github.com/caarlos0/env"
 )
 
-type ContextOption func(*Context)
-
-type Context struct {
-	ctx        context.Context
-	ServiceURL string
-	Port       int
+type Config struct {
+	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
+	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"storage.txt"`
 }
 
-func NewContext(opts ...ContextOption) *Context {
-	uCtx := Context{}
-	for _, o := range opts {
-		o(&uCtx)
+func NewFromEnvAndCMD() (Config, error) {
+	var config Config
+	err := env.Parse(&config)
+	if err != nil {
+		return config, err
 	}
-	return &uCtx
-}
 
-func WithPort(port int) ContextOption {
-	return func(c *Context) {
-		c.Port = port
-	}
-}
+	b := flag.String("b", config.BaseURL, "a string")
+	s := flag.String("s", config.ServerAddress, "a string")
+	f := flag.String("f", config.FileStoragePath, "a string")
+	flag.Parse()
 
-func WithServiceURL(serviceURL string) ContextOption {
-	return func(c *Context) {
-		c.ServiceURL = serviceURL
-	}
+	config.BaseURL = *b
+	config.ServerAddress = *s
+	config.FileStoragePath = *f
+	return config, nil
 }

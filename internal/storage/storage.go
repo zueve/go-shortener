@@ -6,17 +6,28 @@ import (
 	"sync"
 )
 
+type PersistentStorageExpected interface {
+	Load() (map[string]string, error)
+	Add(key string, val string) error
+}
+
 type Storage struct {
 	sync.RWMutex
 	links   map[string]string
 	counter int
+	storage PersistentStorageExpected
 }
 
-func New() *Storage {
-	return &Storage{
-		counter: 1,
-		links:   map[string]string{},
+func New(persistent PersistentStorageExpected) (*Storage, error) {
+	data, err := persistent.Load()
+	if err != nil {
+		return nil, err
 	}
+	return &Storage{
+		counter: getMaxKyeToInt(data),
+		links:   data,
+		storage: persistent,
+	}, nil
 }
 
 func (c *Storage) Add(url string) string {
@@ -26,6 +37,7 @@ func (c *Storage) Add(url string) string {
 	c.counter++
 	key := strconv.Itoa(c.counter)
 	c.links[key] = url
+	c.storage.Add(key, url)
 
 	return key
 }
@@ -40,4 +52,15 @@ func (c *Storage) Get(key string) (string, error) {
 	}
 
 	return url, nil
+}
+
+func getMaxKyeToInt(data map[string]string) int {
+	maxVal := 1
+	for keyStr := range data {
+		keyInt, err := strconv.Atoi(keyStr)
+		if err == nil && maxVal < keyInt {
+			maxVal = keyInt
+		}
+	}
+	return maxVal
 }
