@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zueve/go-shortener/internal/services"
@@ -214,7 +215,9 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) PingStorage(w http.ResponseWriter, r *http.Request) {
-	err := s.service.Ping(r.Context())
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	err := s.service.Ping(ctx)
 	if err != nil {
 		s.error(w, http.StatusInternalServerError, "Storage Unavailable", err)
 		return
