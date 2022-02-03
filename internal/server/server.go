@@ -18,7 +18,7 @@ type Server struct {
 	srv           *http.Server
 	serverAddress string
 	serviceURL    string
-	pingTimeout   int
+	pingTimeout   time.Duration
 }
 
 type ServerOption func(*Server) error
@@ -41,7 +41,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 	const (
 		defaultServerAddress = ":8080"
 		defaultServiceURL    = "http://localhost:8080"
-		pingTimeout          = 1 * time.Second
+		defaultPingTimeout   = 500 * time.Millisecond
 	)
 
 	s := Server{
@@ -49,6 +49,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 		service:       service,
 		serverAddress: defaultServerAddress,
 		serviceURL:    defaultServiceURL,
+		pingTimeout:   1 * time.Second,
 	}
 
 	for _, opt := range opts {
