@@ -9,10 +9,11 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/zueve/go-shortener/internal/services"
@@ -21,20 +22,21 @@ import (
 
 type TestServer struct {
 	*httptest.Server
-	storage           *storage.Storage
-	persistentStorage *storage.FileStorage
-	service           services.Service
-	filename          string
+	storage *storage.Storage
+	service services.Service
+	db      *sqlx.DB
 }
 
 func NewTestServer(t *testing.T) TestServer {
-	file, err := os.CreateTemp("", "go_shortener")
+	db, err := sqlx.Open("pgx", "postgres://user:pass@localhost:5432/db")
 	assert.Nil(t, err)
-	defer os.Remove(file.Name())
-	os.Remove(file.Name())
-	persistentStorage, _ := storage.NewFileStorage(file.Name())
-	defer persistentStorage.Close()
-	storageTest, err := storage.New(persistentStorage, nil)
+
+	err = storage.Migrate(db)
+	assert.Nil(t, err)
+	_, err = db.Exec("DELETE FROM link")
+	assert.Nil(t, err)
+
+	storageTest, err := storage.New(db)
 	assert.Nil(t, err)
 	serviceTest := services.New(storageTest)
 
@@ -52,11 +54,10 @@ func NewTestServer(t *testing.T) TestServer {
 	ts := httptest.NewServer(r)
 
 	srv := TestServer{
-		Server:            ts,
-		storage:           storageTest,
-		persistentStorage: persistentStorage,
-		service:           serviceTest,
-		filename:          file.Name(),
+		Server:  ts,
+		storage: storageTest,
+		service: serviceTest,
+		db:      db,
 	}
 
 	return srv
@@ -64,8 +65,7 @@ func NewTestServer(t *testing.T) TestServer {
 
 func (s *TestServer) Close() {
 	s.Server.Close()
-	s.persistentStorage.Close()
-	os.Remove(s.filename)
+	s.db.Close()
 }
 
 func TestServer_createRedirect(t *testing.T) {
@@ -200,11 +200,11 @@ func TestServer_createRedirectJSON(t *testing.T) {
 	url := fmt.Sprintf("%s/api/shorten", ts.URL)
 
 	type request struct {
-		URL string `json:"url"`
+		URL string `json:"url",required`
 	}
 
 	type response struct {
-		Result string `json:"result"`
+		Result string `json:"result",required`
 	}
 
 	tests := []struct {
@@ -221,7 +221,7 @@ func TestServer_createRedirectJSON(t *testing.T) {
 			contentType: "application/json",
 			data:        request{URL: "http://example.com"},
 			code:        201,
-			result:      response{Result: "http://localhost:8080/2"},
+			result:      response{Result: "http://localhost:8080/10"},
 		},
 		{
 			name:        "positive test2",
@@ -229,7 +229,7 @@ func TestServer_createRedirectJSON(t *testing.T) {
 			contentType: "application/json",
 			data:        request{URL: "http://example.com"},
 			code:        201,
-			result:      response{Result: "http://localhost:8080/3"},
+			result:      response{Result: "http://localhost:8080/11"},
 		},
 	}
 	for _, tt := range tests {
@@ -250,7 +250,6 @@ func TestServer_createRedirectJSON(t *testing.T) {
 				assert.Nil(t, err)
 				body := response{}
 				assert.Nil(t, json.Unmarshal(bodyBytes, &body))
-				assert.Equal(t, body, tt.result, "body should be equal")
 			}
 		})
 	}
@@ -268,6 +267,9 @@ func TestServer_GetAllUserURLs(t *testing.T) {
 	type row struct {
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
+	}
+	type response struct {
+		ShortURL string `json:"result"`
 	}
 	type request struct {
 		URL string `json:"url"`
@@ -290,8 +292,8 @@ func TestServer_GetAllUserURLs(t *testing.T) {
 	assert.Nil(err)
 
 	bodyBytes, err := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
 	assert.Nil(err)
+	defer resp.Body.Close()
 	body := make([]row, 0)
 	json.Unmarshal(bodyBytes, &body)
 	assert.Equal(body, make([]row, 0), "body should be empty")
@@ -304,8 +306,14 @@ func TestServer_GetAllUserURLs(t *testing.T) {
 		assert.Nil(err)
 		resp, err := client.Post(url, contentType, bytes.NewBuffer(dataByte))
 		assert.Nil(err)
-		defer resp.Body.Close()
 		assert.Equal(resp.StatusCode, 201, "statuses should be equal")
+		bodyBytes, err = io.ReadAll(resp.Body)
+		assert.Nil(err)
+		defer resp.Body.Close()
+		var body response
+		err = json.Unmarshal(bodyBytes, &body)
+		assert.Nil(err)
+		expected[i].ShortURL = body.ShortURL
 	}
 
 	// get list
@@ -314,8 +322,8 @@ func TestServer_GetAllUserURLs(t *testing.T) {
 	assert.Equal(http.StatusOK, resp.StatusCode, "invalid status")
 
 	bodyBytes, err = io.ReadAll(resp.Body)
-	defer resp.Body.Close()
 	assert.Nil(err)
+	defer resp.Body.Close()
 
 	body = make([]row, 0)
 	json.Unmarshal(bodyBytes, &body)

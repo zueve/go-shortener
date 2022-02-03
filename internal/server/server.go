@@ -209,7 +209,6 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 		s.error(w, http.StatusInternalServerError, "internal server error", err)
 	}
 	status := http.StatusOK
-	fmt.Println("Empty!!!", len(linksMap), linksMap)
 	if len(linksMap) == 0 {
 		status = http.StatusNoContent
 	}
