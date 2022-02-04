@@ -3,9 +3,9 @@ package services
 import "context"
 
 type IStorage interface {
-	Get(key string) (string, error)
-	Add(url string, userID string) string
-	GetAllUserURLs(userID string) map[string]string
+	Get(ctx context.Context, key string) (string, error)
+	Add(ctx context.Context, url string, userID string) (string, error)
+	GetAllUserURLs(ctx context.Context, userID string) (map[string]string, error)
 	Ping(ctx context.Context) error
 }
 
@@ -19,16 +19,16 @@ func New(storage IStorage) Service {
 	}
 }
 
-func (s *Service) CreateRedirect(key string, userID string) string {
-	return s.storage.Add(key, userID)
+func (s *Service) CreateRedirect(ctx context.Context, key string, userID string) (string, error) {
+	return s.storage.Add(ctx, key, userID)
 }
 
-func (s *Service) GetURLByKey(key string, userID string) (string, error) {
-	return s.storage.Get(key)
+func (s *Service) GetURLByKey(ctx context.Context, key string, userID string) (string, error) {
+	return s.storage.Get(ctx, key)
 }
 
-func (s *Service) GetAllUserURLs(userID string) map[string]string {
-	return s.storage.GetAllUserURLs(userID)
+func (s *Service) GetAllUserURLs(ctx context.Context, userID string) (map[string]string, error) {
+	return s.storage.GetAllUserURLs(ctx, userID)
 }
 
 func (s *Service) Ping(ctx context.Context) error {

@@ -25,31 +25,31 @@ func (c *Storage) Ping(ctx context.Context) error {
 	return c.db.PingContext(ctx)
 }
 
-func (c *Storage) Add(url string, userID string) string {
+func (c *Storage) Add(ctx context.Context, url string, userID string) (string, error) {
 	query := "INSERT INTO link(user_id, origin_url) VALUES($1, $2) returning id"
 
 	var id string
-	err := c.db.Get(&id, query, userID, url)
+	err := c.db.GetContext(ctx, &id, query, userID, url)
 	if err != nil {
 		fmt.Println(query)
-		panic(err)
+		return "", err
 	}
-	return fmt.Sprint(id)
+	return fmt.Sprint(id), nil
 }
 
-func (c *Storage) Get(key string) (string, error) {
+func (c *Storage) Get(ctx context.Context, key string) (string, error) {
 	var row Row
-	if err := c.db.Get(&row, "SELECT * FROM link where id=$1", key); err != nil {
+	if err := c.db.GetContext(ctx, &row, "SELECT * FROM link where id=$1", key); err != nil {
 		return "", err
 	}
 	return row.OriginURL, nil
 }
 
-func (c *Storage) GetAllUserURLs(userID string) map[string]string {
+func (c *Storage) GetAllUserURLs(ctx context.Context, userID string) (map[string]string, error) {
 	rows := make([]Row, 0)
-	err := c.db.Select(&rows, "SELECT id, origin_url, user_id FROM link WHERE user_id=$1 order by id", userID)
+	err := c.db.SelectContext(ctx, &rows, "SELECT id, origin_url, user_id FROM link WHERE user_id=$1 order by id", userID)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	data := make(map[string]string)
@@ -58,5 +58,5 @@ func (c *Storage) GetAllUserURLs(userID string) map[string]string {
 		data[fmt.Sprint(row.ID)] = row.OriginURL
 	}
 
-	return data
+	return data, nil
 }

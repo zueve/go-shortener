@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -148,7 +149,8 @@ func TestServer_redirect(t *testing.T) {
 	ts := NewTestServer(t)
 	defer ts.Close()
 	location := "https://example.com"
-	validKey := ts.service.CreateRedirect(location, "1")
+	validKey, err := ts.service.CreateRedirect(context.Background(), location, "1")
+	assert.Nil(t, err)
 	client := http.Client{}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse

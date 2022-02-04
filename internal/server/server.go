@@ -123,7 +123,11 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	fmt.Println("Add url", url)
-	key := s.service.CreateRedirect(url, userID)
+	key, err := s.service.CreateRedirect(s.context(r), url, userID)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		return
+	}
 	resultURL := fmt.Sprintf("%s/%s", s.serviceURL, key)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(resultURL))
@@ -137,7 +141,7 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	}
 	key := chi.URLParam(r, "keyID")
 	fmt.Println("Call redirect for", key)
-	url, err := s.service.GetURLByKey(key, userID)
+	url, err := s.service.GetURLByKey(s.context(r), key, userID)
 	if err != nil {
 		s.error(w, http.StatusBadRequest, "invalid key", err)
 		return
@@ -171,7 +175,11 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("Create redirect for", redirect.URL)
-	key := s.service.CreateRedirect(redirect.URL, userID)
+	key, err := s.service.CreateRedirect(s.context(r), redirect.URL, userID)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "internal error", err)
+		return
+	}
 	result := ResultString{
 		Result: fmt.Sprintf("%s/%s", s.serviceURL, key),
 	}
@@ -189,11 +197,14 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
-		fmt.Println(err)
 		s.error(w, http.StatusInternalServerError, "invalid token", err)
 		return
 	}
-	linksMap := s.service.GetAllUserURLs(userID)
+	linksMap, err := s.service.GetAllUserURLs(s.context(r), userID)
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "internal error", err)
+		return
+	}
 
 	result := make([]URLRow, len(linksMap))
 	i := 0
@@ -238,4 +249,8 @@ func (s *Server) error(w http.ResponseWriter, code int, msg string, err error) {
 	w.Header().Set("content-type", "text/plain")
 	fmt.Println(msg)
 	w.Write([]byte(msg))
+}
+
+func (s Server) context(r *http.Request) context.Context {
+	return r.Context()
 }
