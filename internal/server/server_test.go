@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/zueve/go-shortener/internal/services"
@@ -28,7 +29,8 @@ type TestServer struct {
 }
 
 func NewTestServer(t *testing.T) TestServer {
-	db, err := sqlx.Open("pgx", "postgres://user:pass@localhost:5432/db")
+	db, err := sqlx.Open("sqlite3", ":memory:")
+	// db, err := sqlx.Open("pgx", "postgres://user:pass@localhost:5432/db")
 	assert.Nil(t, err)
 
 	err = storage.Migrate(db)

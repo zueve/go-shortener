@@ -26,7 +26,8 @@ func (c *Storage) Ping(ctx context.Context) error {
 }
 
 func (c *Storage) Add(url string, userID string) string {
-	query := "INSERT INTO link(user_id, origin_url) VALUES($1, $2) RETURNING id"
+	query := "INSERT INTO link(user_id, origin_url) VALUES($1, $2) returning id"
+
 	var id string
 	err := c.db.Get(&id, query, userID, url)
 	if err != nil {
