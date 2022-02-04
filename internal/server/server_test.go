@@ -204,11 +204,11 @@ func TestServer_createRedirectJSON(t *testing.T) {
 	url := fmt.Sprintf("%s/api/shorten", ts.URL)
 
 	type request struct {
-		URL string `json:"url",required`
+		URL string `json:"url"`
 	}
 
 	type response struct {
-		Result string `json:"result",required`
+		Result string `json:"result"`
 	}
 
 	tests := []struct {

@@ -28,6 +28,10 @@ func main() {
 	}
 	defer db.Close()
 
+	if err = storage.Migrate(db); err != nil {
+		panic(err)
+	}
+
 	storageVar, err := storage.New(db)
 	if err != nil {
 		panic(err)
