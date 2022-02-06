@@ -31,7 +31,6 @@ func (c *Storage) Add(ctx context.Context, url string, userID string) (string, e
 	var id string
 	err := c.db.GetContext(ctx, &id, query, userID, url)
 	if err != nil {
-		fmt.Println(query)
 		return "", err
 	}
 	return fmt.Sprint(id), nil
@@ -59,4 +58,39 @@ func (c *Storage) GetAllUserURLs(ctx context.Context, userID string) (map[string
 	}
 
 	return data, nil
+}
+
+func (c *Storage) AddByBatch(ctx context.Context, urls []string, userID string) ([]string, error) {
+	if len(urls) == 0 {
+		return make([]string, 0), nil
+	}
+	rows := make([]map[string]interface{}, len(urls))
+	for i := range urls {
+		rows[i] = map[string]interface{}{"user_id": userID, "origin_url": urls[i]}
+	}
+
+	query := "INSERT INTO link(user_id, origin_url) VALUES(:user_id, :origin_url) returning id"
+	result, err := c.db.NamedQueryContext(ctx, query, rows)
+	if err != nil {
+		return nil, err
+	}
+
+	// catch result from db
+	ids := make([]string, len(urls))
+	i := 0
+	for result.Next() {
+		var id string
+		err = result.Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		ids[i] = id
+		i = i + 1
+	}
+	err = result.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return ids, nil
 }

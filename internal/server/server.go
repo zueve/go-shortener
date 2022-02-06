@@ -63,6 +63,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 	r.Use(gzipHandle)
 	r.Use(setCookieHandler)
 	r.Post("/", s.createRedirect)
+	r.Post("/api/shorten/batch", s.createRedirectByBatch)
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
 	r.Get("/user/urls", s.GetAllUserURLs)
@@ -134,14 +135,9 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
-	userID, err := getUserID(r)
-	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid token", err)
-		return
-	}
 	key := chi.URLParam(r, "keyID")
 	fmt.Println("Call redirect for", key)
-	url, err := s.service.GetURLByKey(s.context(r), key, userID)
+	url, err := s.service.GetURLByKey(s.context(r), key)
 	if err != nil {
 		s.error(w, http.StatusBadRequest, "invalid key", err)
 		return
@@ -218,9 +214,63 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 	response, err := json.Marshal(result)
 	if err != nil {
 		s.error(w, http.StatusInternalServerError, "internal server error", err)
+		return
 	}
 	status := http.StatusOK
 	if len(linksMap) == 0 {
+		status = http.StatusNoContent
+	}
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(status)
+	w.Write([]byte(response))
+}
+
+func (s *Server) createRedirectByBatch(w http.ResponseWriter, r *http.Request) {
+	headerContentType := r.Header.Get("Content-Type")
+	if headerContentType != "application/json" {
+		s.error(w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
+	}
+	userID, err := getUserID(r)
+	if s.internalError(w, err) {
+		return
+	}
+	// parse request
+	dataBytes, err := io.ReadAll(r.Body)
+	if s.internalError(w, err) {
+		return
+	}
+	requestURLs := make([]URLRowOriginal, 0)
+	err = json.Unmarshal(dataBytes, &requestURLs)
+	if err != nil {
+		s.error(w, http.StatusBadRequest, "invalid body", err)
+		return
+	}
+	// transform request to internal format
+	size := len(requestURLs)
+	urls := make([]string, size)
+	for i := range requestURLs {
+		urls[i] = requestURLs[i].OriginalURL
+	}
+
+	urls, err = s.service.CreateRedirectByBatch(s.context(r), urls, userID)
+
+	// transform result to responce format
+	responseURLs := make([]URLRowShort, size)
+	if s.internalError(w, err) {
+		return
+	}
+	for i := range requestURLs {
+		responseURLs[i] = URLRowShort{
+			CorrelationID: requestURLs[i].CorrelationID,
+			ShortURL:      fmt.Sprintf("%s/%s", s.serviceURL, urls[i]),
+		}
+	}
+	response, err := json.Marshal(responseURLs)
+	if s.internalError(w, err) {
+		return
+	}
+	status := http.StatusOK
+	if len(responseURLs) == 0 {
 		status = http.StatusNoContent
 	}
 	w.Header().Set("content-type", "application/json")
@@ -233,7 +283,7 @@ func (s *Server) PingStorage(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	err := s.service.Ping(ctx)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "Storage Unavailable", err)
+		s.internalError(w, err)
 		return
 	}
 	w.Header().Set("content-type", "text/plain")
@@ -249,6 +299,13 @@ func (s *Server) error(w http.ResponseWriter, code int, msg string, err error) {
 	w.Header().Set("content-type", "text/plain")
 	fmt.Println(msg)
 	w.Write([]byte(msg))
+}
+
+func (s *Server) internalError(w http.ResponseWriter, err error) bool {
+	if err != nil {
+		s.error(w, http.StatusInternalServerError, "internal server error", err)
+	}
+	return err != nil
 }
 
 func (s Server) context(r *http.Request) context.Context {

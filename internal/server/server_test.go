@@ -51,6 +51,7 @@ func NewTestServer(t *testing.T) TestServer {
 	r.Use(gzipHandle)
 	r.Use(setCookieHandler)
 	r.Post("/", s.createRedirect)
+	r.Post("/api/shorten/batch", s.createRedirectByBatch)
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
 	r.Get("/user/urls", s.GetAllUserURLs)

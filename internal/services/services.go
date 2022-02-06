@@ -5,6 +5,7 @@ import "context"
 type IStorage interface {
 	Get(ctx context.Context, key string) (string, error)
 	Add(ctx context.Context, url string, userID string) (string, error)
+	AddByBatch(ctx context.Context, urls []string, userID string) ([]string, error)
 	GetAllUserURLs(ctx context.Context, userID string) (map[string]string, error)
 	Ping(ctx context.Context) error
 }
@@ -23,7 +24,7 @@ func (s *Service) CreateRedirect(ctx context.Context, key string, userID string)
 	return s.storage.Add(ctx, key, userID)
 }
 
-func (s *Service) GetURLByKey(ctx context.Context, key string, userID string) (string, error) {
+func (s *Service) GetURLByKey(ctx context.Context, key string) (string, error) {
 	return s.storage.Get(ctx, key)
 }
 
@@ -33,4 +34,8 @@ func (s *Service) GetAllUserURLs(ctx context.Context, userID string) (map[string
 
 func (s *Service) Ping(ctx context.Context) error {
 	return s.storage.Ping(ctx)
+}
+
+func (s *Service) CreateRedirectByBatch(ctx context.Context, urls []string, userID string) ([]string, error) {
+	return s.storage.AddByBatch(ctx, urls, userID)
 }
