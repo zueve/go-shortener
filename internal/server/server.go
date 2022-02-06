@@ -269,7 +269,7 @@ func (s *Server) createRedirectByBatch(w http.ResponseWriter, r *http.Request) {
 	if s.internalError(w, err) {
 		return
 	}
-	status := http.StatusOK
+	status := http.StatusCreated
 	if len(responseURLs) == 0 {
 		status = http.StatusNoContent
 	}

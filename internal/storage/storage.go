@@ -69,9 +69,18 @@ func (c *Storage) AddByBatch(ctx context.Context, urls []string, userID string) 
 		rows[i] = map[string]interface{}{"user_id": userID, "origin_url": urls[i]}
 	}
 
+	tx, err := c.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
 	query := "INSERT INTO link(user_id, origin_url) VALUES(:user_id, :origin_url) returning id"
 	result, err := c.db.NamedQueryContext(ctx, query, rows)
 	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
