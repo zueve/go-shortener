@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -124,9 +125,15 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	fmt.Println("Add url", url)
+	var existErr *services.LinkExistError
 	key, err := s.service.CreateRedirect(s.context(r), url, userID)
-	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid token", err)
+	if errors.As(err, &existErr) {
+		resultURL := fmt.Sprintf("%s/%s", s.serviceURL, existErr.Key)
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(resultURL))
+		return
+	} else if err != nil {
+		s.internalError(w, err)
 		return
 	}
 	resultURL := fmt.Sprintf("%s/%s", s.serviceURL, key)
@@ -171,9 +178,14 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("Create redirect for", redirect.URL)
+	status := http.StatusCreated
+	var existErr *services.LinkExistError
 	key, err := s.service.CreateRedirect(s.context(r), redirect.URL, userID)
-	if err != nil {
-		s.error(w, http.StatusInternalServerError, "internal error", err)
+	if errors.As(err, &existErr) {
+		key = existErr.Key
+		status = http.StatusConflict
+	} else if err != nil {
+		s.internalError(w, err)
 		return
 	}
 	result := ResultString{
@@ -186,7 +198,7 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 	w.Write([]byte(response))
 }
 

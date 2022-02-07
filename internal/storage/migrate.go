@@ -16,7 +16,8 @@ const schemaPostgres = `
 CREATE TABLE IF NOT EXISTS link (
     id SERIAL,
     user_id VARCHAR(32) NOT NULL,
-    origin_url text NOT NULL
+    origin_url text NOT NULL UNIQUE,
+	constraint cnst_link_origin_url unique (origin_url)
 )`
 
 func Migrate(db *sqlx.DB) error {

@@ -2,19 +2,12 @@ package services
 
 import "context"
 
-type IStorage interface {
-	Get(ctx context.Context, key string) (string, error)
-	Add(ctx context.Context, url string, userID string) (string, error)
-	AddByBatch(ctx context.Context, urls []string, userID string) ([]string, error)
-	GetAllUserURLs(ctx context.Context, userID string) (map[string]string, error)
-	Ping(ctx context.Context) error
-}
 
 type Service struct {
-	storage IStorage
+	storage StorageExpected
 }
 
-func New(storage IStorage) Service {
+func New(storage StorageExpected) Service {
 	return Service{
 		storage: storage,
 	}
