@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
 	"github.com/zueve/go-shortener/internal/services"
+	"github.com/zueve/go-shortener/pkg/logging"
 )
 
 type Server struct {
@@ -91,7 +93,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
 	userID, err := getUserID(r)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		s.error(s.context(r), w, http.StatusInternalServerError, "invalid token", err)
 		return
 	}
 
@@ -103,28 +105,28 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 	case "application/x-gzip":
 		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			s.error(w, http.StatusInternalServerError, "invalid body", nil)
+			s.error(s.context(r), w, http.StatusInternalServerError, "invalid body", nil)
 			return
 		}
 		url = strings.TrimSuffix(string(urlBytes), "\n")
 	case "text/plain; charset=utf-8":
 		urlBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			s.error(w, http.StatusInternalServerError, "invalid body", nil)
+			s.error(s.context(r), w, http.StatusInternalServerError, "invalid body", nil)
 			return
 		}
 		url = strings.TrimSuffix(string(urlBytes), "\n")
 	default:
-		s.error(w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
+		s.error(s.context(r), w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
 		return
 	}
 	if url == "" {
-		s.error(w, http.StatusBadRequest, "invalid url", nil)
+		s.error(s.context(r), w, http.StatusBadRequest, "invalid url", nil)
 		return
 	}
 
 	w.Header().Set("content-type", "text/plain")
-	fmt.Println("Add url", url)
+	s.log(s.context(r)).Info().Msgf("Add url %s", url)
 	var existErr *services.LinkExistError
 	key, err := s.service.CreateRedirect(s.context(r), url, userID)
 	if errors.As(err, &existErr) {
@@ -133,7 +135,7 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(resultURL))
 		return
 	} else if err != nil {
-		s.internalError(w, err)
+		s.internalError(w, r, err)
 		return
 	}
 	resultURL := fmt.Sprintf("%s/%s", s.serviceURL, key)
@@ -143,10 +145,10 @@ func (s *Server) createRedirect(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "keyID")
-	fmt.Println("Call redirect for", key)
+	s.log(s.context(r)).Info().Msgf("Call redirect for %s", key)
 	url, err := s.service.GetURLByKey(s.context(r), key)
 	if err != nil {
-		s.error(w, http.StatusBadRequest, "invalid key", err)
+		s.error(s.context(r), w, http.StatusBadRequest, "invalid key", err)
 		return
 	}
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -156,7 +158,7 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
 	userID, err := getUserID(r)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		s.error(s.context(r), w, http.StatusInternalServerError, "invalid token", err)
 		return
 	}
 
@@ -165,19 +167,19 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	case "application/json":
 		dataBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			s.error(w, http.StatusInternalServerError, "invalid body", err)
+			s.error(s.context(r), w, http.StatusInternalServerError, "invalid body", err)
 			return
 		}
 		err = json.Unmarshal(dataBytes, &redirect)
 		if err != nil || redirect.URL == "" {
-			s.error(w, http.StatusBadRequest, "invalid body", err)
+			s.error(s.context(r), w, http.StatusBadRequest, "invalid body", err)
 			return
 		}
 	default:
-		s.error(w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
+		s.error(s.context(r), w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
 		return
 	}
-	fmt.Println("Create redirect for", redirect.URL)
+	s.log(s.context(r)).Info().Msgf("Create redirect for %s", redirect.URL)
 	status := http.StatusCreated
 	var existErr *services.LinkExistError
 	key, err := s.service.CreateRedirect(s.context(r), redirect.URL, userID)
@@ -185,7 +187,7 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 		key = existErr.Key
 		status = http.StatusConflict
 	} else if err != nil {
-		s.internalError(w, err)
+		s.internalError(w, r, err)
 		return
 	}
 	result := ResultString{
@@ -194,7 +196,7 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 
 	response, err := json.Marshal(result)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "internal error", err)
+		s.error(s.context(r), w, http.StatusInternalServerError, "internal error", err)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
@@ -205,12 +207,12 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "invalid token", err)
+		s.error(s.context(r), w, http.StatusInternalServerError, "invalid token", err)
 		return
 	}
 	linksMap, err := s.service.GetAllUserURLs(s.context(r), userID)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "internal error", err)
+		s.error(s.context(r), w, http.StatusInternalServerError, "internal error", err)
 		return
 	}
 
@@ -225,7 +227,7 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	response, err := json.Marshal(result)
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "internal server error", err)
+		s.error(s.context(r), w, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
 	status := http.StatusOK
@@ -240,21 +242,21 @@ func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
 func (s *Server) createRedirectByBatch(w http.ResponseWriter, r *http.Request) {
 	headerContentType := r.Header.Get("Content-Type")
 	if headerContentType != "application/json" {
-		s.error(w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
+		s.error(s.context(r), w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
 	}
 	userID, err := getUserID(r)
-	if s.internalError(w, err) {
+	if s.internalError(w, r, err) {
 		return
 	}
 	// parse request
 	dataBytes, err := io.ReadAll(r.Body)
-	if s.internalError(w, err) {
+	if s.internalError(w, r, err) {
 		return
 	}
 	requestURLs := make([]URLRowOriginal, 0)
 	err = json.Unmarshal(dataBytes, &requestURLs)
 	if err != nil {
-		s.error(w, http.StatusBadRequest, "invalid body", err)
+		s.error(s.context(r), w, http.StatusBadRequest, "invalid body", err)
 		return
 	}
 	// transform request to internal format
@@ -268,7 +270,7 @@ func (s *Server) createRedirectByBatch(w http.ResponseWriter, r *http.Request) {
 
 	// transform result to responce format
 	responseURLs := make([]URLRowShort, size)
-	if s.internalError(w, err) {
+	if s.internalError(w, r, err) {
 		return
 	}
 	for i := range requestURLs {
@@ -278,7 +280,7 @@ func (s *Server) createRedirectByBatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	response, err := json.Marshal(responseURLs)
-	if s.internalError(w, err) {
+	if s.internalError(w, r, err) {
 		return
 	}
 	status := http.StatusCreated
@@ -295,7 +297,7 @@ func (s *Server) PingStorage(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	err := s.service.Ping(ctx)
 	if err != nil {
-		s.internalError(w, err)
+		s.internalError(w, r, err)
 		return
 	}
 	w.Header().Set("content-type", "text/plain")
@@ -303,23 +305,33 @@ func (s *Server) PingStorage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func (s *Server) error(w http.ResponseWriter, code int, msg string, err error) {
+func (s *Server) error(ctx context.Context, w http.ResponseWriter, code int, msg string, err error) {
 	if err != nil {
-		fmt.Println(err)
+		s.log(ctx).Error().Err(err).Msg(msg)
+
 	}
 	w.WriteHeader(code)
 	w.Header().Set("content-type", "text/plain")
-	fmt.Println(msg)
 	w.Write([]byte(msg))
 }
 
-func (s *Server) internalError(w http.ResponseWriter, err error) bool {
+func (s *Server) internalError(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
-		s.error(w, http.StatusInternalServerError, "internal server error", err)
+		s.error(s.context(r), w, http.StatusInternalServerError, "internal server error", err)
 	}
 	return err != nil
 }
 
 func (s Server) context(r *http.Request) context.Context {
 	return r.Context()
+}
+
+func (s Server) log(ctx context.Context) *zerolog.Logger {
+	_, logger := logging.GetCtxLogger(ctx)
+	logger = logger.With().
+		Str(logging.Source, "Server").
+		Str(logging.Layer, "api").
+		Logger()
+
+	return &logger
 }
