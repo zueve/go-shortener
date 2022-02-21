@@ -237,6 +237,8 @@ func (s *Server) deleteRedirectByBatch(w http.ResponseWriter, r *http.Request) {
 		s.error(s.context(r), w, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {
