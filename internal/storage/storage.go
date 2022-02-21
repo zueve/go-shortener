@@ -15,6 +15,7 @@ type Row struct {
 	ID        string `db:"id"`
 	UserID    string `db:"user_id"`
 	OriginURL string `db:"origin_url"`
+	IsDeleted bool   `db:"is_deleted"`
 }
 
 type Storage struct {
@@ -30,7 +31,7 @@ func (c *Storage) Ping(ctx context.Context) error {
 }
 
 func (c *Storage) Add(ctx context.Context, url string, userID string) (string, error) {
-	query := "INSERT INTO link(user_id, origin_url) VALUES($1, $2) returning id"
+	query := "INSERT INTO link(user_id, origin_url, is_deleted) VALUES($1, $2, false) returning id"
 
 	var id string
 	var pgErr *pgconn.PgError
@@ -53,12 +54,21 @@ func (c *Storage) Get(ctx context.Context, key string) (string, error) {
 	if err := c.db.GetContext(ctx, &row, "SELECT * FROM link where id=$1", key); err != nil {
 		return "", err
 	}
+	if row.IsDeleted {
+		return "", services.ErrRowDeleted
+	}
 	return row.OriginURL, nil
 }
 
 func (c *Storage) GetAllUserURLs(ctx context.Context, userID string) (map[string]string, error) {
 	rows := make([]Row, 0)
-	err := c.db.SelectContext(ctx, &rows, "SELECT id, origin_url, user_id FROM link WHERE user_id=$1 order by id", userID)
+	query := `
+		SELECT id, origin_url, user_id
+		FROM link
+		WHERE user_id=$1
+		AND is_deleted=false
+		order by id`
+	err := c.db.SelectContext(ctx, &rows, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (c *Storage) AddByBatch(ctx context.Context, urls []string, userID string) 
 	}
 	defer tx.Rollback()
 
-	query := "INSERT INTO link(user_id, origin_url) VALUES(:user_id, :origin_url) returning id"
+	query := "INSERT INTO link(user_id, origin_url, is_deleted) VALUES(:user_id, :origin_url, false) returning id"
 	result, err := c.db.NamedQueryContext(ctx, query, rows)
 	if err != nil {
 		return nil, err
@@ -123,4 +133,12 @@ func (c *Storage) GetURLKey(ctx context.Context, originURL string) (string, erro
 		return "", err
 	}
 	return row.ID, nil
+}
+
+func (c *Storage) Delete(ctx context.Context, url string, userID string) error {
+	query := "UPDATE link SET is_deleted=true WHERE user_id=$1 AND id=$2"
+	if _, err := c.db.ExecContext(ctx, query, userID, url); err != nil {
+		return err
+	}
+	return nil
 }
