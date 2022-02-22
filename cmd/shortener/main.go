@@ -26,7 +26,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 
 	if err = storage.Migrate(db); err != nil {
 		panic(err)

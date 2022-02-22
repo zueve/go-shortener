@@ -36,6 +36,7 @@ func New(db *sqlx.DB, deleteSize int, deleteWorkerCnt int, deletePeriod time.Dur
 }
 
 func (c *Storage) Shutdown() error {
+	defer c.db.Close()
 	return c.deleter.Shutdown()
 }
 
