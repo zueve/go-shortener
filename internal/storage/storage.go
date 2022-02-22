@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
@@ -19,11 +20,23 @@ type Row struct {
 }
 
 type Storage struct {
-	db *sqlx.DB
+	db      *sqlx.DB
+	deleter *Deleter
 }
 
-func New(db *sqlx.DB) (*Storage, error) {
-	return &Storage{db: db}, nil
+func New(db *sqlx.DB, deleteSize int, deleteWorkerCnt int, deletePeriod time.Duration) (*Storage, error) {
+	s := &Storage{db: db, deleter: nil}
+	deleter, err := NewDeleter(s, deleteSize, deleteWorkerCnt, deletePeriod)
+	if err != nil {
+		return nil, err
+	}
+	s.deleter = deleter
+
+	return s, nil
+}
+
+func (c *Storage) Shutdown() error {
+	return c.deleter.Shutdown()
 }
 
 func (c *Storage) Ping(ctx context.Context) error {
@@ -135,10 +148,26 @@ func (c *Storage) GetURLKey(ctx context.Context, originURL string) (string, erro
 	return row.ID, nil
 }
 
-func (c *Storage) Delete(ctx context.Context, url string, userID string) error {
-	query := "UPDATE link SET is_deleted=true WHERE user_id=$1 AND id=$2"
-	if _, err := c.db.ExecContext(ctx, query, userID, url); err != nil {
+func (c *Storage) AddToDeletingQueue(ctx context.Context, url, userID string) error {
+	return c.deleter.Push(Task{URL: url, UserID: userID})
+}
+
+func (c *Storage) DeleteByBatch(ctx context.Context, batch []Task) error {
+	tx, err := c.db.Begin()
+	if err != nil {
 		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, "UPDATE link SET is_deleted=true WHERE user_id=$1 AND id=$2")
+	if err != nil {
+		return err
+	}
+
+	for _, task := range batch {
+		if _, err = stmt.ExecContext(ctx, task.UserID, task.URL); err != nil {
+			return err
+		}
 	}
 	return nil
 }
