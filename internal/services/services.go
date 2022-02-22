@@ -2,7 +2,6 @@ package services
 
 import "context"
 
-
 type Service struct {
 	storage StorageExpected
 }
@@ -31,4 +30,13 @@ func (s *Service) Ping(ctx context.Context) error {
 
 func (s *Service) CreateRedirectByBatch(ctx context.Context, urls []string, userID string) ([]string, error) {
 	return s.storage.AddByBatch(ctx, urls, userID)
+}
+
+func (s *Service) DeleteByBatch(ctx context.Context, urls []string, userID string) error {
+	for _, url := range urls {
+		if err := s.storage.AddToDeletingQueue(ctx, url, userID); err != nil {
+			return err
+		}
+	}
+	return nil
 }

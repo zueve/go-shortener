@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -39,7 +40,7 @@ func NewTestServer(t *testing.T) TestServer {
 	_, err = db.Exec("DELETE FROM link")
 	assert.Nil(t, err)
 
-	storageTest, err := storage.New(db)
+	storageTest, err := storage.New(db, 5, 5, 5*time.Second)
 	assert.Nil(t, err)
 	serviceTest := services.New(storageTest)
 

@@ -70,6 +70,7 @@ func New(service services.Service, opts ...ServerOption) (Server, error) {
 	r.Post("/api/shorten", s.createRedirectJSON)
 	r.Get("/{keyID}", s.redirect)
 	r.Get("/user/urls", s.GetAllUserURLs)
+	r.Delete("/api/user/urls", s.deleteRedirectByBatch)
 	r.Get("/ping", s.PingStorage)
 
 	srv := http.Server{
@@ -148,6 +149,9 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	s.log(s.context(r)).Info().Msgf("Call redirect for %s", key)
 	url, err := s.service.GetURLByKey(s.context(r), key)
 	if err != nil {
+		if err == services.ErrRowDeleted {
+			s.error(s.context(r), w, http.StatusGone, err.Error(), nil)
+		}
 		s.error(s.context(r), w, http.StatusBadRequest, "invalid key", err)
 		return
 	}
@@ -202,6 +206,41 @@ func (s *Server) createRedirectJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(status)
 	w.Write([]byte(response))
+}
+
+func (s *Server) deleteRedirectByBatch(w http.ResponseWriter, r *http.Request) {
+	ctx := s.context(r)
+	headerContentType := r.Header.Get("Content-Type")
+	if headerContentType != "application/json" {
+		s.error(ctx, w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
+	}
+
+	userID, err := getUserID(r)
+	if err != nil {
+		s.error(ctx, w, http.StatusInternalServerError, "invalid token", err)
+		return
+	}
+	// parse request
+	dataBytes, err := io.ReadAll(r.Body)
+	if s.internalError(w, r, err) {
+		return
+	}
+	var urls []string
+	err = json.Unmarshal(dataBytes, &urls)
+	if err != nil {
+		s.error(ctx, w, http.StatusBadRequest, "invalid body", err)
+		return
+	}
+	if len(urls) == 0 {
+		return
+	}
+	s.log(s.context(r)).Info().Msgf("deleteRedirectByBatch with %d", len(urls))
+	if err := s.service.DeleteByBatch(ctx, urls, userID); err != nil {
+		s.error(s.context(r), w, http.StatusInternalServerError, "internal server error", err)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *Server) GetAllUserURLs(w http.ResponseWriter, r *http.Request) {

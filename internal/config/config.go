@@ -2,15 +2,19 @@ package config
 
 import (
 	"flag"
+	"time"
 
 	"github.com/caarlos0/env"
 )
 
 type Config struct {
-	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
-	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"storage.txt"`
-	DatabaseDSN     string `env:"DATABASE_DSN" envDefault:"postgres://user:pass@localhost:5432/db"`
+	BaseURL         string        `env:"BASE_URL" envDefault:"http://localhost:8080"`
+	ServerAddress   string        `env:"SERVER_ADDRESS" envDefault:":8080"`
+	FileStoragePath string        `env:"FILE_STORAGE_PATH" envDefault:"storage.txt"`
+	DatabaseDSN     string        `env:"DATABASE_DSN" envDefault:"postgres://user:pass@localhost:5432/db"`
+	DeleteSize      int           `env:"DELETE_SIZE" envDefault:"5"`
+	DeleteWorkerCnt int           `env:"DELETE_WORKER_CNT" envDefault:"10"`
+	DeletePeriod    time.Duration `env:"DELETE_PERIOD" envDefault:"1s"`
 }
 
 func NewFromEnvAndCMD() (Config, error) {
