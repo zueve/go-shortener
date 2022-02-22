@@ -170,5 +170,5 @@ func (c *Storage) DeleteByBatch(ctx context.Context, batch []Task) error {
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
 }
