@@ -214,6 +214,7 @@ func (s *Server) deleteRedirectByBatch(w http.ResponseWriter, r *http.Request) {
 	if headerContentType != "application/json" {
 		s.error(ctx, w, http.StatusUnsupportedMediaType, "invalid ContentType", nil)
 	}
+
 	userID, err := getUserID(r)
 	if err != nil {
 		s.error(ctx, w, http.StatusInternalServerError, "invalid token", err)
@@ -233,6 +234,7 @@ func (s *Server) deleteRedirectByBatch(w http.ResponseWriter, r *http.Request) {
 	if len(urls) == 0 {
 		return
 	}
+	s.log(s.context(r)).Info().Msgf("deleteRedirectByBatch with %d", len(urls))
 	if err := s.service.DeleteByBatch(ctx, urls, userID); err != nil {
 		s.error(s.context(r), w, http.StatusInternalServerError, "internal server error", err)
 		return
