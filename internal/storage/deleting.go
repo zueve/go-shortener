@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -26,31 +25,31 @@ type Deleter struct {
 	stoping bool
 	cancel  func()
 	pushWg  *sync.WaitGroup
+	pushCh  chan Task
 }
 
 func NewDeleter(storage StorageExpected, batchSize int, workerNum int, pushPeriod time.Duration) (*Deleter, error) {
 	var wg sync.WaitGroup
 	workers := make([]Worker, workerNum)
 	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan Task)
 	for i := 0; i < workerNum; i++ {
-		ch := make(chan Task)
-		w := Worker{BatchSize: batchSize, Storage: storage, InpCh: ch}
+		w := Worker{BatchSize: batchSize, Storage: storage}
 		workers[i] = w
-		go w.Loop(ctx, pushPeriod)
+		go w.Loop(ctx, pushPeriod, ch)
 	}
-	return &Deleter{workers: workers, stoping: false, cancel: cancel, pushWg: &wg}, nil
+	return &Deleter{workers: workers, stoping: false, cancel: cancel, pushWg: &wg, pushCh: ch}, nil
 }
 
 func (d *Deleter) Push(task Task) error {
 	if d.stoping {
 		return errors.New("cancelation in progress")
 	}
-	inx := rand.Intn(len(d.workers))
 	d.pushWg.Add(1)
-	go func(inp chan Task) {
+	go func() {
 		defer d.pushWg.Done()
-		inp <- task
-	}(d.workers[inx].InpCh)
+		d.pushCh <- task
+	}()
 	return nil
 }
 
@@ -63,16 +62,16 @@ func (d *Deleter) Shutdown() error {
 
 type Worker struct {
 	BatchSize int
-	InpCh     chan Task
 	Storage   StorageExpected
 	batch     []Task
 }
 
-func (w *Worker) Loop(ctx context.Context, period time.Duration) {
+func (w *Worker) Loop(ctx context.Context, period time.Duration, inpCh chan Task) {
 	timer := time.NewTicker(period)
+	defer timer.Stop()
 	for {
 		select {
-		case task := <-w.InpCh:
+		case task := <-inpCh:
 			w.batch = append(w.batch, task)
 			// run by batch size
 			if len(w.batch) == w.BatchSize {
@@ -93,7 +92,7 @@ func (w *Worker) Run(ctx context.Context) {
 	if err := w.Storage.DeleteByBatch(context.Background(), w.batch); err != nil {
 		w.log(ctx).Err(err).Msg("error on DeleteByBatch")
 	}
-	w.batch = make([]Task, 0)
+	w.batch = w.batch[:0]
 }
 
 func (w *Worker) log(ctx context.Context) *zerolog.Logger {
