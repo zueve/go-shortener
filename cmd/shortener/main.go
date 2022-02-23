@@ -26,16 +26,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 
 	if err = storage.Migrate(db); err != nil {
 		panic(err)
 	}
 
-	storageVar, err := storage.New(db)
+	storageVar, err := storage.New(db, conf.DeleteSize, conf.DeleteWorkerCnt, conf.DeletePeriod)
 	if err != nil {
 		panic(err)
 	}
+	defer storageVar.Shutdown()
+
 	serviceVar := services.New(storageVar)
 	serverVar, err := server.New(
 		serviceVar,
